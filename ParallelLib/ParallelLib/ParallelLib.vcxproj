@@ -115,7 +115,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ExecParams.cpp" />
+    <ClCompile Include="ParallelFor.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ParallelDo.cpp" />
+    <ClCompile Include="Schedule.cpp" />
+    <ClCompile Include="SetOnce.cpp" />
+    <ClCompile Include="Singleton.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ExecParams.h" />
+    <ClInclude Include="ParallelFor.h" />
+    <ClInclude Include="ParallelDo.h" />
+    <ClInclude Include="Schedule.h" />
+    <ClInclude Include="SetOnce.h" />
+    <ClInclude Include="Singleton.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
