@@ -9,24 +9,37 @@ namespace std
 	class thread;
 }
 
-struct pForChunkData
+class pForChunkDispenser
 {
 	const int init;
 	const int target;
 	const int increment;
-	const int chunkSize;
+	//const int chunkSize;
 	std::function<void(int)> func;
 
-	pForChunkData(const int& Init, const int& Target, const int& Increment, const int& ChunkSize);
+public:
+	pForChunkDispenser(const int& Init, const int& Target, const int& Increment/*, const int& ChunkSize*/);
+	virtual pForChunk* GetNextChunk();
+};
+
+class pForChunkDispenserStatic : public pForChunkDispenser
+{
+private:
+	int numStaticChunks;
+
+public:
+	pForChunkDispenserStatic(const int& Init, const int& Target, const int& Increment, const int& NumThreads);
+	pForChunk* staticChunks;
 };
 
 class pForChunk
 {
+private:
+	friend class pForChunkDispenser; //only ChunkDispensers can create Chunks
+	pForChunk();
 
 protected:
-	const pForChunkData& data;
-
-	pForChunk(const pForChunkData& Data);
+	const pForChunkDispenser& data;
 
 public:
 	virtual void Do() = 0;
@@ -38,7 +51,7 @@ class pForChunkStaticSize : public pForChunk
 	const int chunkEnd;
 
 public:
-	pForChunkStaticSize(const pForChunkData& Data, const int ChunkBegin, const int ChunkEnd);
+	pForChunkStaticSize(const pForChunkDispenser& Data, const int ChunkBegin, const int ChunkEnd);
 
 	void Do() override;
 };
@@ -51,7 +64,7 @@ private:
 	pSetOnce<bool> bNoWait;
 	pSetOnce<bool> bExecuteOnMaster;
 	pSetOnce<pSchedule> schedule;
-	pForChunkData* Data;
+	pForChunkDispenser* Data;
 	std::thread** threads;
 	int actualNumThreads;
 

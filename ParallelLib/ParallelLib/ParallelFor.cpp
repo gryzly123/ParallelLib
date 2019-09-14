@@ -2,15 +2,11 @@
 #include <functional>
 #include <thread>
 
-pForChunkData::pForChunkData(const int& Init, const int& Target, const int& Increment, const int& ChunkSize)
+pForChunkDispenser::pForChunkDispenser(const int& Init, const int& Target, const int& Increment)
 	: init(Init)
 	, target(Target)
 	, increment(Increment)
-	, chunkSize(ChunkSize)
 {
-	//loop packets need to have a proper size
-	if (chunkSize < 1) throw;
-
 	//increment can't be zero, because then the loop would be infinite
 	if (increment == 0) throw;
 
@@ -19,9 +15,29 @@ pForChunkData::pForChunkData(const int& Init, const int& Target, const int& Incr
 	if ((target > init) ^ (increment > 0)) throw;
 }
 
-pForChunk::pForChunk(const pForChunkData& Data) : data(Data) { }
+pForChunkDispenserStatic::pForChunkDispenserStatic(const int& Init, const int& Target, const int& Increment, const int& NumThreads)
+	: pForChunkDispenser(Init, Target, Increment)
+{
+	int numIters = static_cast<int>(std::floor(static_cast<double>(Target - Init) / static_cast<double>(Increment)));
+	numStaticChunks = NumThreads > numIters ? NumThreads : numIters;
 
-pForChunkStaticSize::pForChunkStaticSize(const pForChunkData& Data, const int ChunkBegin, const int ChunkEnd)
+	staticChunks = malloc(sizeof(void*) * numStaticChunks);
+	staticChunks[0].from = Init;
+	staticChunks[0].to   = Init + (numIters * Increment);
+	int i = 1;
+
+	for (; i < numStaticChunks; ++i)
+	{
+		staticChunks[i].from = staticChunks[i - 1].to;
+		staticChunks[i].to   = staticChunks[i].from + (numIters * Increment);
+	}
+
+}
+
+
+pForChunk::pForChunk(const pForChunkDispenser& Data) : data(Data) { }
+
+pForChunkStaticSize::pForChunkStaticSize(const pForChunkDispenser& Data, const int ChunkBegin, const int ChunkEnd)
 	: pForChunk(Data)
 	, chunkBegin(ChunkBegin)
 	, chunkEnd(ChunkEnd)
@@ -69,7 +85,7 @@ void pFor::Do(const int Init, const int Target, const int Increment, const std::
 	schedule.OptionalSet(pSchedule::Static);
 
 	//dynamic params
-	Data = new pForChunkData(Init, Target, Increment, chunkSize.Get());
+	Data = new pForChunkDispenser(Init, Target, Increment, chunkSize.Get());
 	
 	//switch (schedule.Get())
 	//{
@@ -96,3 +112,4 @@ void pFor::CleanupThreads()
 	}
 	delete[] threads;
 }
+
