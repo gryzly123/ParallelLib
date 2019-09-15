@@ -17,9 +17,9 @@
 
 int main()
 {
+#if 0
 	std::cout << "parallel test 1: four threads, join\n";
 
-#if 0
 	create_public(int, s) = 10;
 	create_private(int, p);
 
@@ -54,21 +54,26 @@ int main()
 	std::cout << "end of nojoin scope - joined\n";
 #endif
 
+	std::cout << "parallelFor test 1: four threads, join\n";
+
 	//parallel_for(forTest1, iter, 0, 100, 4, num_threads(2) nowait(yes) exec_master(no),
 	//{
 	//	std::cout << iter << "\n";
 	//});
 
-	//pFor forTest;
-	//
-	//const int init_val = 0;
-	//const int max_val = 100;
-	//const int increment = 4;
-	//
-	//forTest.Do(init_val, max_val, increment, [&](int iterator) 
-	//	{
-	//		std::cout << iterator << "\n";
-	//	});
+	pFor forTest;
+	pDo dotest;
+	const int init_val = 0;
+	const int max_val = 100;
+	const int increment = 4;
+	std::mutex CriticalSection;
+	forTest.NoWait(true);
+	forTest.Do(init_val, max_val, increment, [&](pExecParams ___pExecParams, int iterator)
+	{
+		CriticalSection.lock();
+		std::cout << iterator << "\t@ " << THREAD_ID << "\n";
+		CriticalSection.unlock();
+	});
 
 	std::getchar();
 	return 0;

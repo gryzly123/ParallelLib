@@ -1,7 +1,7 @@
 #pragma once
 #include "SetOnce.h"
 
-enum pSchedule
+enum class pSchedule : unsigned char
 {
 	Static = 0,
 	Dynamic = 1,

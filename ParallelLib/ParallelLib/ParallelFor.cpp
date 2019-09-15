@@ -6,6 +6,7 @@ pForChunkDispenser::pForChunkDispenser(const int& Init, const int& Target, const
 	: init(Init)
 	, target(Target)
 	, increment(Increment)
+	, currentBegin(Init)
 {
 	//increment can't be zero, because then the loop would be infinite
 	if (increment == 0) throw;
@@ -19,33 +20,46 @@ pForChunkDispenserStatic::pForChunkDispenserStatic(const int& Init, const int& T
 	: pForChunkDispenser(Init, Target, Increment)
 {
 	int numIters = static_cast<int>(std::floor(static_cast<double>(Target - Init) / static_cast<double>(Increment)));
-	numStaticChunks = NumThreads > numIters ? NumThreads : numIters;
-
-	staticChunks = malloc(sizeof(void*) * numStaticChunks);
-	staticChunks[0].from = Init;
-	staticChunks[0].to   = Init + (numIters * Increment);
-	int i = 1;
-
-	for (; i < numStaticChunks; ++i)
-	{
-		staticChunks[i].from = staticChunks[i - 1].to;
-		staticChunks[i].to   = staticChunks[i].from + (numIters * Increment);
-	}
-
+	numStaticChunks = numIters < NumThreads ? numIters : NumThreads;
+	itersPerChunk = numIters / numStaticChunks;
 }
 
-
-pForChunk::pForChunk(const pForChunkDispenser& Data) : data(Data) { }
-
-pForChunkStaticSize::pForChunkStaticSize(const pForChunkDispenser& Data, const int ChunkBegin, const int ChunkEnd)
-	: pForChunk(Data)
-	, chunkBegin(ChunkBegin)
-	, chunkEnd(ChunkEnd)
-{ }
-
-void pForChunkStaticSize::Do()
+bool pForChunkDispenserStatic::GetNextChunk(pForChunk& NextChunk)
 {
-	for (int i = chunkBegin; i < chunkEnd; i += data.increment) data.func(i);
+	chunkGetter.lock();
+	
+	if (currentBegin == target)
+	{
+		chunkGetter.unlock();
+		return false;
+	}
+
+	int currentTo = currentBegin + (increment * itersPerChunk);
+	if ((increment > 0 && currentTo > target) || (increment < 0 && currentTo < target))
+		currentTo = target;
+
+	NextChunk.Init(currentBegin, currentTo, increment);
+	currentBegin = currentTo + increment;
+	
+	chunkGetter.unlock();
+	return true;
+}
+
+pForChunk::pForChunk() { }
+
+void pForChunk::Init(const int& Begin, const int& End, const int& Increment)
+{
+	begin = Begin;
+	end = End;
+	increment = Increment;
+}
+
+void pForChunk::Do(const pExecParams& Params, ForFunc& Func)
+{
+	if(begin < end)
+		for (int i = begin; i < end; i += increment) Func(Params, i);
+	else
+		for (int i = begin; i > end; i += increment) Func(Params, i);
 }
 
 pFor::pFor() { }
@@ -75,7 +89,7 @@ pFor& pFor::ChunkSize(bool _ChunkSize)
 	return *this;
 }
 
-void pFor::Do(const int Init, const int Target, const int Increment, const std::function<void(int)>& Function)
+void pFor::Do(const int Init, const int Target, const int Increment, ForFunc Function)
 {
 	//class defaults
 	numThreads.OptionalSet(pSingleton::Get().NumThreads);
@@ -85,22 +99,49 @@ void pFor::Do(const int Init, const int Target, const int Increment, const std::
 	schedule.OptionalSet(pSchedule::Static);
 
 	//dynamic params
-	Data = new pForChunkDispenser(Init, Target, Increment, chunkSize.Get());
+	actualNumThreads = numThreads.Get() - (bExecuteOnMaster.Get() ? 1 : 0);
 	
-	//switch (schedule.Get())
-	//{
-	//case pSchedule::Static:
-	//	for (int i = 0; i < numThreads; ++i)
-	//	{
-	//		pForChunkStaticSize* s = new pForChunkStaticSize(chunkBegin)
-	//		threads[i] = new std::thread(Func(i), )
-	//	}
-	//
-	//case pSchedule::Dynamic:
-	//
-	//case pSchedule::Guided:
-	//
-	//}
+	switch(schedule.Get())
+	{
+	case pSchedule::Static:
+		Data = new pForChunkDispenserStatic(Init, Target, Increment, numThreads.Get());
+		break;
+
+	case pSchedule::Dynamic:
+		//Data = new pForChunkDispenserDynamic(Init, Target, Increment, chunkSize.Get());
+		throw; //not implemented
+
+	case pSchedule::Guided:
+		throw; //not implemented
+	}
+
+	threads = new std::thread*[actualNumThreads];
+
+	//execution
+	for (int i = 0; i < actualNumThreads; ++i)
+	{
+		threads[i] = new std::thread(pFor::BeginExecuteChunks, pExecParams(this, i), Function);
+	}
+	if (bExecuteOnMaster.Get()) BeginExecuteChunks(pExecParams(this, MASTER_TASK), Function);
+
+	//join
+	if (!bNoWait.Get())
+	{
+		CleanupThreads();
+	}
+}
+
+void pFor::BeginExecuteChunks(pExecParams Params, ForFunc Func)
+{
+	pForChunkDispenser* data = ((pFor*)Params.ParentTask)->Data;
+	const bool bIsStatic = ((pFor*)Params.ParentTask)->schedule.Get() == pSchedule::Static;
+
+	pForChunk currentChunk;
+	while (data->GetNextChunk(currentChunk))
+	{
+		currentChunk.Do(Params, Func);
+		if (bIsStatic) return; //ensure that one thread doesn't get two static chunks
+	}
 }
 
 void pFor::CleanupThreads()
@@ -112,4 +153,3 @@ void pFor::CleanupThreads()
 	}
 	delete[] threads;
 }
-
