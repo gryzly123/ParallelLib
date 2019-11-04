@@ -2,8 +2,6 @@
 
 #define MASTER_TASK -1
 
-#define THREAD_ID ___pExecParams.ThreadId
-
 class pExecParams
 {
 public:

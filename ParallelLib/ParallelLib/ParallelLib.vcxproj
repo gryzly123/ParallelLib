@@ -22,7 +22,7 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{ED6F62F6-6A7B-4E95-B641-EFB15AC94D0F}</ProjectGuid>
     <RootNamespace>ParallelLib</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -127,6 +127,7 @@
     <ClInclude Include="ExecParams.h" />
     <ClInclude Include="ParallelFor.h" />
     <ClInclude Include="ParallelDo.h" />
+    <ClInclude Include="ParallelLib.h" />
     <ClInclude Include="Schedule.h" />
     <ClInclude Include="SetOnce.h" />
     <ClInclude Include="Singleton.h" />
