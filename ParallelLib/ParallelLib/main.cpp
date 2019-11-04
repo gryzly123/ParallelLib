@@ -1,26 +1,14 @@
 #include <iostream>
-#include <atomic>
-#include "ParallelDo.h"
-#include "ParallelFor.h"
+#include <sstream>
 
-#define yes true
-#define no false
-#define parallel_do(tag, params, method) pDo tag; tag params .Do([&](pExecParams ___pExecParams) method);
-#define parallel_for(tag, iterator, init_val, max_val, increment, params, method) pFor tag; tag params .Do(init_val, max_val, increment, [](int iterator) method);
-#define num_threads(n)                    .NumThreads(n)
-#define exec_master(c)                  .ExecuteOnMaster(c)
-#define nowait(c)                       .NoWait(c)
-
-#define create_public(type, name, value) std::atomic<type> name
-#define create_private(type, name) thread_local type name
-
+#include "ParallelLib.h"
 
 int main()
 {
+#if 0
 	std::cout << "parallel test 1: four threads, join\n";
 
-#if 0
-	create_public(int, s) = 10;
+	create_public(int, s, 10);
 	create_private(int, p);
 
 	parallel_do(parTest1, num_threads(4) nowait(no) exec_master(yes),
@@ -39,7 +27,9 @@ int main()
 			for (int i = 0; i < INT_MAX; ++i);
 			p = THREAD_ID;
 			++s;
-			std::cout << p << " " << s << "\n";
+			std::stringstream out;
+			out << "A: (" << p << ") " << s << "\n";
+			printf("%s", out.str().c_str());
 		});
 		
 		parallel_do(parTest2b, num_threads(2) nowait(yes) exec_master(no), 
@@ -47,28 +37,82 @@ int main()
 			for (int i = 0; i < INT_MAX; ++i);
 			p = THREAD_ID;
 			++s;
-			std::cout << p << " " << s << "\n";
+			std::stringstream out;
+			out << "B: (" << p << ") " << s << "\n";
+			printf("%s", out.str().c_str());
 		});
 	}
 
 	std::cout << "end of nojoin scope - joined\n";
+
+	std::cout << "\n\nparallelFor test 1:\n  for(i = 0; i < 40; i += 4) in six threads (static; chunk:1)\n";
+
+	pFor forTest;
+
+	forTest.NoWait(false)
+	.ExecuteOnMaster(false)
+	.Schedule(pSchedule::Static)
+	.ChunkSize(1)
+	.NumThreads(8)
+	.Do(0, 40, 4, [&](pExecParams ___pExecParams, int iterator)
+	{
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
+
+	std::cout << "\n\nparallelFor test 2:\n  for(i = 0; i < 44; i += 4) in five threads (dynamic; chunk:2)\n";
+
+	pFor forTest2;
+
+	forTest2.NoWait(false)
+	.ExecuteOnMaster(false)
+	.Schedule(pSchedule::Dynamic)
+	.ChunkSize(1)
+	.NumThreads(7)
+	.Do(0, 44, 4, [&](pExecParams ___pExecParams, int iterator)
+	{
+		___pExecParams.SleepMili((THREAD_ID - 8) * 200.0f);
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
 #endif
 
-	//parallel_for(forTest1, iter, 0, 100, 4, num_threads(2) nowait(yes) exec_master(no),
-	//{
-	//	std::cout << iter << "\n";
-	//});
+	std::cout << "\n\nparallelFor test 3:\n  for(i = 87; i > 3; i -= 7) in three threads (static; chunk:3)\n";
 
-	//pFor forTest;
-	//
-	//const int init_val = 0;
-	//const int max_val = 100;
-	//const int increment = 4;
-	//
-	//forTest.Do(init_val, max_val, increment, [&](int iterator) 
-	//	{
-	//		std::cout << iterator << "\n";
-	//	});
+	pFor forTest3;
+
+	forTest3.NoWait(false)
+		.ExecuteOnMaster(false)
+		.Schedule(pSchedule::Static)
+		.NumThreads(3)
+		.Do(87, 3, -7, [&](pExecParams ___pExecParams, int iterator)
+	{
+		___pExecParams.SleepMili((THREAD_ID - 8) * 200.0f);
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
+
+	std::cout << "\n\nparallelFor test 4:\n  for(i = 87; i > 3; i -= 7) in three threads (dynamic; chunk:3)\n";
+
+	pFor forTest4;
+
+	forTest4.NoWait(false)
+		.ExecuteOnMaster(false)
+		.Schedule(pSchedule::Dynamic)
+		.ChunkSize(3)
+		.NumThreads(3)
+		.Do(87, 3, -7, [&](pExecParams ___pExecParams, int iterator)
+	{
+		___pExecParams.SleepMili((THREAD_ID - 8) * 200.0f);
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
+
+	std::cout << "\n\ndone\n";
 
 	std::getchar();
 	return 0;

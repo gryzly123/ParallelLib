@@ -56,5 +56,8 @@
     <ClInclude Include="ExecParams.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ParallelLib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

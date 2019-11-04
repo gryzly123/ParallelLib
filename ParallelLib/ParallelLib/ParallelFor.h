@@ -2,45 +2,72 @@
 #include "Singleton.h"
 #include "Schedule.h"
 #include "SetOnce.h"
+#include "ExecParams.h"
 #include <functional>
+#include <mutex>
+
+typedef std::function<void(const pExecParams, const int)> ForFunc;
+//#define ForFunc std::function<void(const pExecParams, int)>
 
 namespace std
 {
 	class thread;
 }
 
-struct pForChunkData
+class pForChunk
 {
+private:
+	//these should be const for more proper OOP approach,
+	//but we keep a single instance of ForChunk per thread
+	//for better performance (no memory allocation) and thus
+	//we use an empty constructor and Init function for "creating" new chunks
+	int begin;
+	int end;
+	int increment;
+
+public:
+	pForChunk();
+	void Init(const int& Begin, const int& End, const int& Increment);
+	void Do(const pExecParams& Params, ForFunc& Func);
+};
+
+class pForChunkDispenser
+{
+protected:
+	//input parameters
 	const int init;
 	const int target;
 	const int increment;
-	const int chunkSize;
-	std::function<void(int)> func;
 
-	pForChunkData(const int& Init, const int& Target, const int& Increment, const int& ChunkSize);
-};
-
-class pForChunk
-{
-
-protected:
-	const pForChunkData& data;
-
-	pForChunk(const pForChunkData& Data);
+	//chunk generatiaon
+	std::mutex chunkGetter;
+	int currentBegin;
+	int itersPerChunk;
 
 public:
-	virtual void Do() = 0;
+	pForChunkDispenser(const int& Init, const int& Target, const int& Increment/*, const int& ChunkSize*/);
+	virtual ~pForChunkDispenser() { }
+
+	virtual bool GetNextChunk(pForChunk& NextChunk) = 0;
 };
 
-class pForChunkStaticSize : public pForChunk
+class pForChunkDispenserStatic : public pForChunkDispenser
 {
-	const int chunkBegin;
-	const int chunkEnd;
-
+private:
+	int numStaticChunks;
+	int leftoverIters;
 public:
-	pForChunkStaticSize(const pForChunkData& Data, const int ChunkBegin, const int ChunkEnd);
+	pForChunkDispenserStatic(const int& Init, const int& Target, const int& Increment, const int& NumThreads);
+	virtual bool GetNextChunk(pForChunk& NextChunk) override;
+};
 
-	void Do() override;
+class pForChunkDispenserDynamic : public pForChunkDispenser
+{
+private:
+	int numDynamicChunks;
+public:
+	pForChunkDispenserDynamic(const int& Init, const int& Target, const int& Increment, const int& NumIters);
+	virtual bool GetNextChunk(pForChunk& NextChunk) override;
 };
 
 class pFor
@@ -51,7 +78,7 @@ private:
 	pSetOnce<bool> bNoWait;
 	pSetOnce<bool> bExecuteOnMaster;
 	pSetOnce<pSchedule> schedule;
-	pForChunkData* Data;
+	pForChunkDispenser* Data;
 	std::thread** threads;
 	int actualNumThreads;
 
@@ -67,9 +94,14 @@ public:
 
 	pFor& ExecuteOnMaster(bool _ExecuteOnMaster);
 
-	pFor& ChunkSize(bool _ChunkSize);
+	pFor& ChunkSize(int _ChunkSize);
 
-	void Do(const int Init, const int Target, const int Increment, const std::function<void(int)>& Function);
+	pFor& Schedule(pSchedule _Schedule);
+
+	void Do(const int Init, const int Target, const int Increment, ForFunc Function);
 
 	void CleanupThreads();
+
+private:
+	static void BeginExecuteChunks(pExecParams Params, ForFunc Function);
 };
