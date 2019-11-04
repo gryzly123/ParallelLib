@@ -19,8 +19,11 @@ pForChunkDispenser::pForChunkDispenser(const int& Init, const int& Target, const
 pForChunkDispenserStatic::pForChunkDispenserStatic(const int& Init, const int& Target, const int& Increment, const int& NumThreads)
 	: pForChunkDispenser(Init, Target, Increment)
 {
-	int numIters = static_cast<int>(std::floor(static_cast<double>(Target - Init) / static_cast<double>(Increment)));
+	double fracIters = static_cast<double>(Target - Init) / static_cast<double>(Increment);
+	int numIters = static_cast<int>(Increment > 0 ? std::floor(fracIters) : std::ceil(fracIters));
+
 	numStaticChunks = numIters < NumThreads ? numIters : NumThreads;
+
 	itersPerChunk = numIters / numStaticChunks;
 	leftoverIters = numIters - (numStaticChunks * itersPerChunk);
 }

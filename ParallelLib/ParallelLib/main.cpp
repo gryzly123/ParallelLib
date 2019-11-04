@@ -5,10 +5,10 @@
 
 int main()
 {
-#if 1
+#if 0
 	std::cout << "parallel test 1: four threads, join\n";
 
-	create_public(int, s) = 10;
+	create_public(int, s, 10);
 	create_private(int, p);
 
 	parallel_do(parTest1, num_threads(4) nowait(no) exec_master(yes),
@@ -60,7 +60,6 @@ int main()
 		result << iterator << "\t@ " << THREAD_ID << "\n";
 		printf("%s", result.str().c_str());
 	});
-#endif
 
 	std::cout << "\n\nparallelFor test 2:\n  for(i = 0; i < 44; i += 4) in five threads (dynamic; chunk:2)\n";
 
@@ -72,6 +71,40 @@ int main()
 	.ChunkSize(1)
 	.NumThreads(7)
 	.Do(0, 44, 4, [&](pExecParams ___pExecParams, int iterator)
+	{
+		___pExecParams.SleepMili((THREAD_ID - 8) * 200.0f);
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
+#endif
+
+	std::cout << "\n\nparallelFor test 3:\n  for(i = 87; i > 3; i -= 7) in three threads (static; chunk:3)\n";
+
+	pFor forTest3;
+
+	forTest3.NoWait(false)
+		.ExecuteOnMaster(false)
+		.Schedule(pSchedule::Static)
+		.NumThreads(3)
+		.Do(87, 3, -7, [&](pExecParams ___pExecParams, int iterator)
+	{
+		___pExecParams.SleepMili((THREAD_ID - 8) * 200.0f);
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
+
+	std::cout << "\n\nparallelFor test 4:\n  for(i = 87; i > 3; i -= 7) in three threads (dynamic; chunk:3)\n";
+
+	pFor forTest4;
+
+	forTest4.NoWait(false)
+		.ExecuteOnMaster(false)
+		.Schedule(pSchedule::Dynamic)
+		.ChunkSize(3)
+		.NumThreads(3)
+		.Do(87, 3, -7, [&](pExecParams ___pExecParams, int iterator)
 	{
 		___pExecParams.SleepMili((THREAD_ID - 8) * 200.0f);
 		std::stringstream result;
