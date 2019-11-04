@@ -12,4 +12,8 @@ public:
 
 	pExecParams(const void* _ParentTask, const int _ThreadId);
 	~pExecParams();
+
+	static void SleepMili(int ms);
+	static void SleepMicro(int ms);
+	static void SleepNano(int ns);
 };
