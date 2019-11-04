@@ -22,25 +22,56 @@ pForChunkDispenserStatic::pForChunkDispenserStatic(const int& Init, const int& T
 	int numIters = static_cast<int>(std::floor(static_cast<double>(Target - Init) / static_cast<double>(Increment)));
 	numStaticChunks = numIters < NumThreads ? numIters : NumThreads;
 	itersPerChunk = numIters / numStaticChunks;
+	leftoverIters = numIters - (numStaticChunks * itersPerChunk);
 }
 
 bool pForChunkDispenserStatic::GetNextChunk(pForChunk& NextChunk)
 {
 	chunkGetter.lock();
-	
+
 	if (currentBegin == target)
 	{
 		chunkGetter.unlock();
 		return false;
 	}
 
-	int currentTo = currentBegin + (increment * itersPerChunk);
+	int currentTo = currentBegin + (increment * (itersPerChunk + leftoverIters - 1));
 	if ((increment > 0 && currentTo > target) || (increment < 0 && currentTo < target))
 		currentTo = target;
 
 	NextChunk.Init(currentBegin, currentTo, increment);
 	currentBegin = currentTo + increment;
+	leftoverIters = 0;
 	
+	chunkGetter.unlock();
+	return true;
+}
+
+pForChunkDispenserDynamic::pForChunkDispenserDynamic(const int& Init, const int& Target, const int& Increment, const int& NumIters)
+	: pForChunkDispenser(Init, Target, Increment)
+{
+	itersPerChunk = NumIters;
+	int totalNumIters = std::floor(static_cast<double>(Target - Init) / static_cast<double>(Increment));
+	numDynamicChunks = std::floor(static_cast<double>(totalNumIters) / static_cast<double>(NumIters));
+}
+
+bool pForChunkDispenserDynamic::GetNextChunk(pForChunk& NextChunk)
+{
+	chunkGetter.lock();
+
+	if ((increment > 0 && currentBegin >= target) || (increment < 0 && currentBegin <= target))
+	{
+		chunkGetter.unlock();
+		return false;
+	}
+
+	int currentTo = currentBegin + (increment * (itersPerChunk - 1));
+	if ((increment > 0 && currentTo > target) || (increment < 0 && currentTo < target))
+		currentTo = target;
+
+	NextChunk.Init(currentBegin, currentTo, increment);
+	currentBegin = currentTo + increment;
+
 	chunkGetter.unlock();
 	return true;
 }
@@ -56,10 +87,20 @@ void pForChunk::Init(const int& Begin, const int& End, const int& Increment)
 
 void pForChunk::Do(const pExecParams& Params, ForFunc& Func)
 {
-	if(begin < end)
-		for (int i = begin; i < end; i += increment) Func(Params, i);
+	if (increment > 0)
+	{
+		for (int i = begin; i <= end; i += increment)
+		{
+			Func(Params, i);
+		}
+	}
 	else
-		for (int i = begin; i > end; i += increment) Func(Params, i);
+	{
+		for (int i = begin; i >= end; i += increment)
+		{
+			Func(Params, i);
+		}
+	}
 }
 
 pFor::pFor() { }
@@ -67,6 +108,7 @@ pFor::~pFor() { if (bNoWait.Get()) CleanupThreads(); }
 
 pFor& pFor::NumThreads(int _NumThreads)
 {
+	if (_NumThreads < 1) throw;
 	numThreads.Set(_NumThreads);
 	return *this;
 }
@@ -83,9 +125,15 @@ pFor& pFor::ExecuteOnMaster(bool _ExecuteOnMaster)
 	return *this;
 }
 
-pFor& pFor::ChunkSize(bool _ChunkSize)
+pFor& pFor::ChunkSize(int _ChunkSize)
 {
 	chunkSize.Set(_ChunkSize);
+	return *this;
+}
+
+pFor & pFor::Schedule(pSchedule _Schedule)
+{
+	schedule.Set(_Schedule);
 	return *this;
 }
 
@@ -108,11 +156,12 @@ void pFor::Do(const int Init, const int Target, const int Increment, ForFunc Fun
 		break;
 
 	case pSchedule::Dynamic:
-		//Data = new pForChunkDispenserDynamic(Init, Target, Increment, chunkSize.Get());
-		throw; //not implemented
+		Data = new pForChunkDispenserDynamic(Init, Target, Increment, chunkSize.Get());
+		break;
 
 	case pSchedule::Guided:
 		throw; //not implemented
+		break;
 	}
 
 	threads = new std::thread*[actualNumThreads];

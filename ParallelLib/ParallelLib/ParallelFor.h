@@ -42,6 +42,7 @@ protected:
 	//chunk generatiaon
 	std::mutex chunkGetter;
 	int currentBegin;
+	int itersPerChunk;
 
 public:
 	pForChunkDispenser(const int& Init, const int& Target, const int& Increment/*, const int& ChunkSize*/);
@@ -54,9 +55,18 @@ class pForChunkDispenserStatic : public pForChunkDispenser
 {
 private:
 	int numStaticChunks;
-	int itersPerChunk;
+	int leftoverIters;
 public:
 	pForChunkDispenserStatic(const int& Init, const int& Target, const int& Increment, const int& NumThreads);
+	virtual bool GetNextChunk(pForChunk& NextChunk) override;
+};
+
+class pForChunkDispenserDynamic : public pForChunkDispenser
+{
+private:
+	int numDynamicChunks;
+public:
+	pForChunkDispenserDynamic(const int& Init, const int& Target, const int& Increment, const int& NumIters);
 	virtual bool GetNextChunk(pForChunk& NextChunk) override;
 };
 
@@ -84,11 +94,14 @@ public:
 
 	pFor& ExecuteOnMaster(bool _ExecuteOnMaster);
 
-	pFor& ChunkSize(bool _ChunkSize);
+	pFor& ChunkSize(int _ChunkSize);
+
+	pFor& Schedule(pSchedule _Schedule);
 
 	void Do(const int Init, const int Target, const int Increment, ForFunc Function);
 
-	static void BeginExecuteChunks(pExecParams Params, ForFunc Function);
-
 	void CleanupThreads();
+
+private:
+	static void BeginExecuteChunks(pExecParams Params, ForFunc Function);
 };
