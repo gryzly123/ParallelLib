@@ -21,7 +21,7 @@
 //main parallel structures
 	#include "ParallelDo.h"
 	#include "ParallelFor.h"
-	//@todo: #include "ParallelSection.h"
+	#include "ParallelSections.h"
 
 // -------------------- #DEFINE SYNTAX -------------------
 
@@ -46,6 +46,17 @@
 	*/
 	#define parallel_for(tag, iterator, init_val, max_val, increment, params, method) \
 		pFor tag; tag params .Do(init_val, max_val, increment, [](int iterator) method);
+
+	/* Creates a parallel region where each thread receives its own block of code.
+	Supported tags:
+	*  exec_master,
+	*  nowait
+	*/
+#define parallel_sections(tag, params, sections) \
+		pSections tag; tag params .DoIgnoreFirst({[&](pExecParams ___pExecParams){} sections });
+
+#define parallel_section \
+	,[&](pExecParams ___pExecParams)
 
 //helper macros for ie. nowait(yes) or exec_master(no)
 
