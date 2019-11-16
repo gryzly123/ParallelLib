@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "Test.h"
-#include <chrono>
 
 //C-style tostring function
 
@@ -19,25 +18,36 @@ const char* LibraryToString(TargetLibrary Library)
 //------------------------ test result
 int TestResult::GetNumTestRepeatitions()
 {
-	return perTryResult.size();
+	return perTryResults.size();
 }
 
 int TestResult::GetAverageResultTime()
 {
 	int totalTime = 0;
-	for (const int& time : perTryResult) totalTime += time;
-	totalTime /= GetNumTestRepeatitions();
+	int numSucceededRetries = 0;
+	for (const RetryResult& result : perTryResults)
+	{
+		if (!result.GetTaskSucceeded()) continue;
+		++numSucceededRetries;
+		totalTime += result.GetParallelWorkloadDuration();
+	}
+
+	if (numSucceededRetries == 0) return 0;
+	totalTime /= numSucceededRetries;
 	return totalTime;
 }
 
 bool TestResult::DidTestFail()
 {
-	return (testPhase != TestPhase::TaskEndedSuccessfully);
+	for (const RetryResult& result : perTryResults)
+		if (!result.GetTaskSucceeded())
+			return false;
+
+	return true;
 }
 
 TestResult::TestResult(const TargetLibrary _testedLibrary)
 	: testedLibrary(_testedLibrary)
-	, testPhase(TestPhase::InitializedTestCase)
 {
 }
 
@@ -66,50 +76,58 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 				printf("\tTest %d:\t", i);
 			}
 
-			auto start = std::chrono::steady_clock::now();
+			//Create the RetryResult object for current test instance.
+			RetryResult retryResult;
+			retryResult.userData = result.userData;
+
 			switch (lib)
 			{
 			case TargetLibrary::OpenMP:
-				DoOpenMP(inParams, result);
+				DoOpenMP(inParams, retryResult);
 				break;
 			case TargetLibrary::ParallelLib:
-				DoParallelLib(inParams, result);
+				DoParallelLib(inParams, retryResult);
 				break;
 			case TargetLibrary::Boost:
-				DoBoost(inParams, result);
+				DoBoost(inParams, retryResult);
 				break;
 			}
-			auto end = std::chrono::steady_clock::now();
-			long long duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-			result.perTryResult.push_back(duration);
 
 			if (inParams.bVerboseStats)
 			{
-				printf("%d", duration);
+				if (retryResult.GetTaskSucceeded())
+				{
+					printf("succ\t%d\t%d\t%d\n",
+						retryResult.GetResourceInitDuration(),
+						retryResult.GetParallelWorkloadDuration(),
+						retryResult.GetResourceCleanupDuration()
+					);
+				}
+				else
+				{
+				printf("fail\n");
+				}
 			}
+
+			result.perTryResults.push_back(retryResult);
 		}
 		results.push_back(result);
 	}
 }
 
-void Test::DoParallelLib(const TestParams& In, TestResult& Out)
+void Test::DoParallelLib(const TestParams& In, RetryResult& Out)
 {
 	throw; //base class cannot be tested
 }
 
-void Test::DoOpenMP(const TestParams& In, TestResult& Out)
+void Test::DoOpenMP(const TestParams& In, RetryResult& Out)
 {
 	throw; //base class cannot be tested
 }
 
-void Test::DoBoost(const TestParams& In, TestResult& Out)
+void Test::DoBoost(const TestParams& In, RetryResult& Out)
 {
 	throw; //base class cannot be tested
-}
-
-TestType Test::GetTestType()
-{
-	return type;
 }
 
 TestParams::TestParams(
@@ -126,3 +144,43 @@ TestParams::TestParams(
 	, forSchedule(_forSchedule)
 	, userData(_userData)
 { }
+
+RetryResult::RetryResult() :testState(TestPhase::InitializedTestCase) { }
+
+void RetryResult::BeginResourceInit()
+{
+	if (testState != TestPhase::InitializedTestCase) throw;
+	testState = TestPhase::BegunResourceInitialization;
+	start = std::chrono::steady_clock::now();
+}
+
+void RetryResult::BeginParallWorkload()
+{
+	if (testState != TestPhase::BegunResourceInitialization) throw;
+
+	TimeStamp end = std::chrono::steady_clock::now();
+	phaseTime[0] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+	start = std::chrono::steady_clock::now();
+	testState = TestPhase::BegunParallelWorkload;
+}
+
+void RetryResult::BeginResourceCleanup()
+{
+	if (testState != TestPhase::BegunParallelWorkload) throw;
+
+	TimeStamp end = std::chrono::steady_clock::now();
+	phaseTime[1] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+	start = std::chrono::steady_clock::now();
+	testState = TestPhase::BegunResourceCleanup;
+}
+
+void RetryResult::EndTask(bool bSucceeded)
+{
+	if (bSucceeded)
+	{
+		if (testState != TestPhase::BegunResourceCleanup) throw;
+		TimeStamp end = std::chrono::steady_clock::now();
+		phaseTime[2] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+	}
+	testState = bSucceeded ? TestPhase::TaskEndedSuccessfully : TestPhase::TaskFailed;
+}

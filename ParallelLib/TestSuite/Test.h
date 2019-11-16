@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <chrono>
 
 enum class ForSchedule : unsigned char
 {
@@ -43,15 +44,40 @@ enum class TestPhase : unsigned char
 	BegunResourceInitialization = 1,
 	BegunParallelWorkload = 2,
 	BegunResourceCleanup = 3,
-	TaskEndedSuccessfully = 4
+	TaskEndedSuccessfully = 4,
+	TaskFailed = 5
 };
 
+//note: I could use typedef here, but C++'s strong typing would not
+//allow to perform std::chrono operations on the custom types anymore
+#define TimeStamp std::chrono::steady_clock::time_point
+#define TimeSpan long long
+struct RetryResult
+{
+private:
+	TestPhase testState;
+	TimeStamp start;
+	TimeSpan phaseTime[3];
+
+public:
+	void* userData;
+
+	RetryResult();
+	void BeginResourceInit();
+	void BeginParallWorkload();
+	void BeginResourceCleanup();
+	void EndTask(bool bSucceeded);
+
+	inline const TimeSpan& GetResourceInitDuration() const { return phaseTime[0]; }
+	inline const TimeSpan& GetParallelWorkloadDuration() const { return phaseTime[1]; }
+	inline const TimeSpan& GetResourceCleanupDuration() const { return phaseTime[3]; }
+	inline const bool& GetTaskSucceeded() const { return (testState == TestPhase::TaskEndedSuccessfully); }
+};
 
 struct TestResult
 {
 	TargetLibrary testedLibrary;
-	TestPhase testPhase;
-	std::vector<long long> perTryResult;
+	std::vector<RetryResult> perTryResults;
 	void* userData; //additional test-class-specific helper data
 
 	int GetNumTestRepeatitions();
@@ -75,18 +101,18 @@ class Test
 {
 private:
 	const TestType type;
-
+	const std::string name;
 public:
-
 	Test();
 	virtual ~Test();
 
 	void PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams& inParams, std::vector<TestResult>& results);
+	
+	inline TestType GetTestType() const { return type; }
+	inline const std::string& GetTestName() const { return name; }
 
 protected:
-	virtual void DoParallelLib(const TestParams& In, TestResult& Out);
-	virtual void DoOpenMP(const TestParams& In, TestResult& Out);
-	virtual void DoBoost(const TestParams& In, TestResult& Out);
-	TestType GetTestType();
+	virtual void DoParallelLib(const TestParams& In, RetryResult& Out);
+	virtual void DoOpenMP(const TestParams& In, RetryResult& Out);
+	virtual void DoBoost(const TestParams& In, RetryResult& Out);
 };
-
