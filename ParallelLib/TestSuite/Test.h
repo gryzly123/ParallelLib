@@ -7,7 +7,7 @@
 //note: I could use actual typedef here, but C++'s strong typing would
 //not allow to perform std::chrono operations on the custom types anymore
 #define TimeStamp std::chrono::steady_clock::time_point
-#define TimeSpan long long
+#define TimeSpan unsigned long long
 
 // ----------------------- ENUMS -----------------------
 
@@ -22,9 +22,10 @@ enum class ForSchedule : unsigned char
 //tested library
 enum class TargetLibrary : unsigned char
 {
-	OpenMP = 1,
-	ParallelLib = 2,
-	Boost = 4
+	NoLibrary = 1, //do sequentially
+	OpenMP = 2,
+	ParallelLib = 4,
+	Boost = 8
 };
 const char* LibraryToString(TargetLibrary Library); //ToString method for this enum
 
@@ -86,14 +87,14 @@ public:
 
 	RetryResult();
 	void BeginResourceInit();
-	void BeginParallWorkload();
+	void BeginParallelWorkload();
 	void BeginResourceCleanup();
 	void EndTask(bool bSucceeded);
 
 	inline const TimeSpan& GetResourceInitDuration() const { return phaseTime[0]; }
 	inline const TimeSpan& GetParallelWorkloadDuration() const { return phaseTime[1]; }
 	inline const TimeSpan& GetResourceCleanupDuration() const { return phaseTime[3]; }
-	inline const bool& GetTaskSucceeded() const { return (testState == TestPhase::TaskEndedSuccessfully); }
+	inline const bool GetTaskSucceeded() const { return (testState == TestPhase::TaskEndedSuccessfully); }
 };
 
 //full test result, includes all test retries
@@ -103,9 +104,9 @@ struct TestResult
 	std::vector<RetryResult> perTryResults;
 	void* userData; //additional test-class-specific helper data
 
-	int GetNumTestRepeatitions() const;
-	int GetAverageResultTime() const; //returns mean average of all test times
-	bool DidTestFail() const; //test is considered failed if the last testPhase is not a successful task end
+	size_t GetNumTestRepeatitions() const;
+	TimeSpan GetAverageResultTime() const; //returns mean average of all test times
+	bool DidTestSucceed() const; //test is considered failed if the last testPhase is not a successful task end
 
 	TestResult(const TargetLibrary _testedLibrary);
 };
@@ -128,6 +129,9 @@ public:
 	inline const std::string& GetTestName() const { return name; }
 
 protected:
+	Test(TestType inType, const std::string& inName);
+
+	virtual void DoSequentially(const TestParams& In, RetryResult& Out);
 	virtual void DoParallelLib(const TestParams& In, RetryResult& Out);
 	virtual void DoOpenMP(const TestParams& In, RetryResult& Out);
 	virtual void DoBoost(const TestParams& In, RetryResult& Out);

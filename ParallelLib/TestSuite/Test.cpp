@@ -7,6 +7,7 @@ const char* LibraryToString(TargetLibrary Library)
 {
 	switch (Library)
 	{
+	case TargetLibrary::NoLibrary:   return "No library (sequential)";
 	case TargetLibrary::OpenMP:      return "OpenMP";
 	case TargetLibrary::ParallelLib: return "ParallelLib";
 	case TargetLibrary::Boost:       return "Boost";
@@ -43,7 +44,7 @@ void RetryResult::BeginResourceInit()
 	start = std::chrono::steady_clock::now();
 }
 
-void RetryResult::BeginParallWorkload()
+void RetryResult::BeginParallelWorkload()
 {
 	if (testState != TestPhase::BegunResourceInitialization) throw;
 
@@ -79,14 +80,14 @@ TestResult::TestResult(const TargetLibrary _testedLibrary)
 	: testedLibrary(_testedLibrary)
 { }
 
-int TestResult::GetNumTestRepeatitions() const
+size_t TestResult::GetNumTestRepeatitions() const
 {
 	return perTryResults.size();
 }
 
-int TestResult::GetAverageResultTime() const
+TimeSpan TestResult::GetAverageResultTime() const
 {
-	int totalTime = 0;
+	TimeSpan totalTime = 0;
 	int numSucceededRetries = 0;
 	for (const RetryResult& result : perTryResults)
 	{
@@ -100,7 +101,7 @@ int TestResult::GetAverageResultTime() const
 	return totalTime;
 }
 
-bool TestResult::DidTestFail() const
+bool TestResult::DidTestSucceed() const
 {
 	for (const RetryResult& result : perTryResults)
 		if (!result.GetTaskSucceeded())
@@ -111,7 +112,8 @@ bool TestResult::DidTestFail() const
 
 // --------------------- TEST CLASS ---------------------
 
-Test::Test() : type(TestType::None) { }
+Test::Test() : type(TestType::None) { throw; } //this should never be used
+Test::Test(TestType inType, const std::string& inName) : type(inType), name(inName) { }
 
 Test::~Test() { }
 
@@ -141,6 +143,9 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 
 			switch (lib)
 			{
+			case TargetLibrary::NoLibrary:
+				DoSequentially(inParams, retryResult);
+				break;
 			case TargetLibrary::OpenMP:
 				DoOpenMP(inParams, retryResult);
 				break;
@@ -150,13 +155,15 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 			case TargetLibrary::Boost:
 				DoBoost(inParams, retryResult);
 				break;
+			default:
+				throw; //unsupported library
 			}
 
 			if (inParams.bVerboseStats)
 			{
 				if (retryResult.GetTaskSucceeded())
 				{
-					printf("succ\t%d\t%d\t%d\n",
+					printf("succ\t%llu\t%llu\t%llu\n",
 						retryResult.GetResourceInitDuration(),
 						retryResult.GetParallelWorkloadDuration(),
 						retryResult.GetResourceCleanupDuration()
@@ -172,6 +179,11 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 		}
 		results.push_back(result);
 	}
+}
+
+void Test::DoSequentially(const TestParams& In, RetryResult& Out)
+{
+	throw; //base class cannot be tested
 }
 
 void Test::DoParallelLib(const TestParams& In, RetryResult& Out)
