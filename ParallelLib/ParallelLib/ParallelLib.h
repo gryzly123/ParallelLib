@@ -45,7 +45,7 @@
 	    *  schedule(type, chunksize)
 	*/
 	#define parallel_for(tag, iterator, init_val, max_val, increment, params, method) \
-		pFor tag; tag params .Do(init_val, max_val, increment, [](int iterator) method);
+		pFor tag; tag params .Do(init_val, max_val, increment, [&](pExecParams ___pExecParams, int iterator) method);
 
 	/* Creates a parallel region where each thread receives its own block of code.
 	Supported tags:
@@ -68,7 +68,7 @@
 	#define num_threads(n)             .NumThreads(n)
 	#define exec_master(c)             .ExecuteOnMaster(c)
 	#define nowait(c)                  .NoWait(c)
-	#define schedule(sched, chunksize) .Schedule(pSchedule::s).ChunkSize(chunksize)
+	#define schedule(sched, chunksize) .Schedule(pSchedule::sched).ChunkSize(chunksize)
 
 //parallel variables
 
