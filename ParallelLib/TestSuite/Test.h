@@ -63,6 +63,7 @@ struct TestParams
 	const bool bVerboseTest; //print task progress and time stats
 	const int numThreadsToUse; //how many threads to use in the algorithm
 	const ForSchedule forSchedule; //which for schedule to use in for-based parallelism
+	const int forChunkSize; //size of chunks for static and dynamic for loops
 	void* userData; //additional test-class-specific helper data
 
 	TestParams(
@@ -71,6 +72,7 @@ struct TestParams
 		const bool _bVerboseTest,
 		const int _numThreadsToUse,
 		const ForSchedule _forSchedule,
+		const int _forChunkSize,
 		void* _userData);
 };
 

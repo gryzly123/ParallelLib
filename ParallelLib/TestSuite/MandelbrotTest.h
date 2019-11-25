@@ -13,6 +13,7 @@ struct MandelbrotConfig
 	const double CxMax = 1.5;
 	const double CyMin = -2.0;
 	const double CyMax = 2.0;
+	const double EscapeRadius = 2.0f;
 
 	const int IterationMax = 200;
 };

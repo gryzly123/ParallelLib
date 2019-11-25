@@ -25,12 +25,14 @@ TestParams::TestParams(
 	const bool _bVerboseTest,
 	const int _numThreadsToUse,
 	const ForSchedule _forSchedule,
+	const int _forChunkSize,
 	void* _userData)
 	: bVerboseStats(_bVerboseStats)
 	, numTestRepeatitions(_numTestRepeatitions)
 	, bVerboseTest(_bVerboseTest)
 	, numThreadsToUse(_numThreadsToUse)
 	, forSchedule(_forSchedule)
+	, forChunkSize(_forChunkSize)
 	, userData(_userData)
 { }
 
