@@ -65,10 +65,11 @@
 
 //parallel structure tags
 
-	#define num_threads(n)             .NumThreads(n)
-	#define exec_master(c)             .ExecuteOnMaster(c)
-	#define nowait(c)                  .NoWait(c)
-	#define schedule(sched, chunksize) .Schedule(pSchedule::sched).ChunkSize(chunksize)
+	#define num_threads(n)              .NumThreads(n)
+	#define exec_master(c)              .ExecuteOnMaster(c)
+	#define nowait(c)                   .NoWait(c)
+	#define schedule(sched, chunksize)  .Schedule(pSchedule::sched).ChunkSize(chunksize) //schedule setter similar to OpenMP (static, dynamic, guided, except here in PascalCase)
+	#define schedulev(sched, chunksize) .Schedule(sched)           .ChunkSize(chunksize) //schedule setter for situations where we want to pass the pSchedule enum value by variable
 
 //parallel variables
 
