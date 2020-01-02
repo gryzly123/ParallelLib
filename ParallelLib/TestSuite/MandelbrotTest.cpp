@@ -1,7 +1,16 @@
 #include "stdafx.h"
 #include "ParallelLib.h"
 #include <omp.h>
+#include <cmath> //fabs
 #include "MandelbrotTest.h"
+
+#ifdef __GNUC__
+#define OPENFILE(f, name, permissions) f = fopen(name, permissions)
+#define WRITE fprintf
+#else
+#define OPENFILE(f, name, permissions) fopen_s(&f, name, permissions)
+#define WRITE fprintf_s
+#endif
 
 #define TEST_CORE(thread_id)                                                                 \
 /*for (int iY = 0; iY < config.iYmax; iY++) <-paralleled for - to bedeclared outside macro */\
@@ -69,8 +78,8 @@ void MandelbrotTest::DoSequentially(const TestParams& In, RetryResult& Out)
 	double ER2 = EscapeRadius * EscapeRadius;
 
 	//create new file,give it a name and open it in binary mode  
-	fopen_s(&fp, filename.c_str(), "wb");
-	fprintf_s(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
+	OPENFILE(fp, filename.c_str(), "wb");
+	WRITE(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
 
 	uint8_t* ImagePtr = Image;
 
@@ -109,8 +118,8 @@ void MandelbrotTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 	double ER2 = EscapeRadius * EscapeRadius;
 
 	//create new file,give it a name and open it in binary mode  
-	fopen_s(&fp, filename.c_str(), "wb");
-	fprintf_s(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
+	OPENFILE(fp, filename.c_str(), "wb");
+	WRITE(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
 
 	create_private(double, Cy);
 	create_private(double, Cx);
@@ -158,8 +167,8 @@ void MandelbrotTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 	double ER2 = config.EscapeRadius * config.EscapeRadius;
 
 	//create new file,give it a name and open it in binary mode  
-	fopen_s(&fp, filename.c_str(), "wb");
-	fprintf_s(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
+	OPENFILE(fp, filename.c_str(), "wb");
+	WRITE(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
 
 	omp_set_num_threads(In.numThreadsToUse);
 	Out.BeginParallelWorkload();
