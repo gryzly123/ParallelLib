@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Test.h"
+#include "tbb/task_scheduler_init.h"
 
 // ----------------------- ENUMS -----------------------
 
@@ -7,10 +8,25 @@ const char* LibraryToString(TargetLibrary Library)
 {
 	switch (Library)
 	{
-	case TargetLibrary::NoLibrary:   return "No library (sequential)";
+	case TargetLibrary::NoLibrary:   return "Sequential";
 	case TargetLibrary::OpenMP:      return "OpenMP";
 	case TargetLibrary::ParallelLib: return "ParallelLib";
-	case TargetLibrary::Boost:       return "Boost";
+	case TargetLibrary::IntelTBB:    return "IntelTBB";
+	case TargetLibrary::dlib:        return "dlib";
+	//case TargetLibrary::Boost:       return "Boost";
+	//case TargetLibrary::MicrosoftPPL:       return "Microsoft PPL";
+	}
+	throw; //unsupported library
+	return "";
+}
+
+const char* ForScheduleToString(ForSchedule Schedule)
+{
+	switch (Schedule)
+	{
+	case ForSchedule::Static:  return "static";
+	case ForSchedule::Dynamic: return "dynamic";
+	case ForSchedule::Guided:  return "guided";
 	}
 	throw; //unsupported library
 	return "";
@@ -154,9 +170,22 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 			case TargetLibrary::ParallelLib:
 				DoParallelLib(inParams, retryResult);
 				break;
-			case TargetLibrary::Boost:
-				DoBoost(inParams, retryResult);
+			case TargetLibrary::IntelTBB:
+
+				//in IntelTBB's case we manually reset the task scheduling before starting the task.
+				//this ensures that the required threads are preallocated and there are as many
+				//threads as defined in TestParams object.
+				{
+					tbb::task_scheduler_init tbbScheduler(inParams.numThreadsToUse);
+					DoTBB(inParams, retryResult);
+				}
 				break;
+			case TargetLibrary::dlib:
+				DoDlib(inParams, retryResult);
+				break;
+			//case TargetLibrary::Boost:
+			//	DoBoost(inParams, retryResult);
+			//	break;
 			default:
 				throw; //unsupported library
 			}
@@ -199,6 +228,16 @@ void Test::DoOpenMP(const TestParams& In, RetryResult& Out)
 }
 
 void Test::DoBoost(const TestParams& In, RetryResult& Out)
+{
+	throw; //base class cannot be tested
+}
+
+void Test::DoTBB(const TestParams& In, RetryResult& Out)
+{
+	throw; //base class cannot be tested
+}
+
+void Test::DoDlib(const TestParams& In, RetryResult& Out)
 {
 	throw; //base class cannot be tested
 }

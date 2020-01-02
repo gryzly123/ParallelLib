@@ -18,6 +18,7 @@ enum class ForSchedule : unsigned char
 	Dynamic = 1,
 	Guided = 2
 };
+const char* ForScheduleToString(ForSchedule Schedule); //ToString method for this enum
 
 //tested library
 enum class TargetLibrary : unsigned char
@@ -25,7 +26,8 @@ enum class TargetLibrary : unsigned char
 	NoLibrary = 1, //do sequentially
 	OpenMP = 2,
 	ParallelLib = 4,
-	Boost = 8
+	IntelTBB = 8,
+	dlib = 16
 };
 const char* LibraryToString(TargetLibrary Library); //ToString method for this enum
 
@@ -95,7 +97,7 @@ public:
 
 	inline const TimeSpan& GetResourceInitDuration() const { return phaseTime[0]; }
 	inline const TimeSpan& GetParallelWorkloadDuration() const { return phaseTime[1]; }
-	inline const TimeSpan& GetResourceCleanupDuration() const { return phaseTime[3]; }
+	inline const TimeSpan& GetResourceCleanupDuration() const { return phaseTime[2]; }
 	inline const bool GetTaskSucceeded() const { return (testState == TestPhase::TaskEndedSuccessfully); }
 };
 
@@ -137,4 +139,6 @@ protected:
 	virtual void DoParallelLib(const TestParams& In, RetryResult& Out);
 	virtual void DoOpenMP(const TestParams& In, RetryResult& Out);
 	virtual void DoBoost(const TestParams& In, RetryResult& Out);
+	virtual void DoTBB(const TestParams& In, RetryResult& Out);
+	virtual void DoDlib(const TestParams& In, RetryResult& Out);
 };

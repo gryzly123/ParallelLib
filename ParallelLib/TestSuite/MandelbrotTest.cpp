@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include "ParallelLib.h"
 #include <omp.h>
 #include "MandelbrotTest.h"
 
@@ -90,6 +89,7 @@ void MandelbrotTest::DoSequentially(const TestParams& In, RetryResult& Out)
 	Out.EndTask(true);
 }
 
+#include "ParallelLib/ParallelLib.h"
 void MandelbrotTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 {
 	Out.BeginResourceInit();
@@ -135,6 +135,7 @@ void MandelbrotTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 
 	Out.EndTask(true);
 }
+#undef parallel_for
 
 void MandelbrotTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 {
@@ -203,4 +204,74 @@ void MandelbrotTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 void MandelbrotTest::DoBoost(const TestParams & In, RetryResult & Out)
 {
 	throw;
+}
+
+#define TBB_USE_EXCEPTIONS 0
+#include "tbb/parallel_for.h"
+void MandelbrotTest::DoTBB(const TestParams& In, RetryResult& Out)
+{
+	Out.BeginResourceInit();
+
+	//image data
+	unsigned char* Image = new unsigned char[config.iYmax * config.iXmax * 3];
+
+	double PixelWidth = (config.CxMax - config.CxMin) / config.iXmax;
+	double PixelHeight = (config.CyMax - config.CyMin) / config.iYmax;
+
+	FILE* fp;
+	std::string filename = "tbbA.ppm";
+	std::string comment = "# ";//comment should start with #
+
+							   //bail-out value , radius of circle ;  
+	const double EscapeRadius = 2;
+	double ER2 = EscapeRadius * EscapeRadius;
+
+	//create new file, give it a name and open it in binary mode  
+	fopen_s(&fp, filename.c_str(), "wb");
+	fprintf_s(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
+	
+	thread_local double Cy;
+	thread_local double Cx;
+	thread_local double Zx;
+	thread_local double Zy;
+	thread_local double Zx2;
+	thread_local double Zy2;
+
+	Out.BeginParallelWorkload();
+
+	//      pFor yLoop executes for(int iY = 0; i < config.iYmax; iY += 1)
+	//parallel_for(yLoop, iY, 0, config.iYmax, 1, num_threads(In.numThreadsToUse) schedulev((pSchedule)In.forSchedule, In.forChunkSize),
+
+	switch (In.forSchedule)
+	{
+	case ForSchedule::Static:
+		tbb::parallel_for(0, config.iYmax, [&](size_t iY)
+		{
+			TEST_CORE(0);
+		}, tbb::static_partitioner());
+		break;
+
+	case ForSchedule::Dynamic:
+		tbb::parallel_for(0, config.iYmax, [&](size_t iY)
+		{
+			TEST_CORE(0);
+		});
+		break;
+
+	case ForSchedule::Guided:
+		throw; //not available
+	}
+
+	Out.BeginResourceCleanup();
+
+	fwrite(Image, 1, config.iXmax * config.iYmax * 3, fp);
+	fclose(fp);
+	delete Image;
+
+	Out.EndTask(true);
+}
+
+void MandelbrotTest::DoDlib(const TestParams& In, RetryResult& Out)
+{
+	throw; //base class cannot be tested
 }
