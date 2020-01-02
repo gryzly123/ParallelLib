@@ -3,9 +3,13 @@
 
 #include "ParallelLib.h"
 
+#if __GNUC__
+#define INT_MAX INT32_MAX
+#endif 
+
 int main()
 {
-#if 0
+#if 1
 	std::cout << "parallel test 1: four threads, join\n";
 
 	create_public(int, s, 10);
