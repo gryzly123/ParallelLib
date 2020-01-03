@@ -16,7 +16,8 @@ enum class ForSchedule : unsigned char
 {
 	Static = 0,
 	Dynamic = 1,
-	Guided = 2
+	Guided = 2,
+	None = 255
 };
 const char* ForScheduleToString(ForSchedule Schedule); //ToString method for this enum
 
@@ -122,6 +123,15 @@ class Test
 private:
 	const TestType type;
 	const std::string name;
+	int testNum;
+	TargetLibrary runningLibrary;
+
+	virtual void DoSequentially(const TestParams& In, RetryResult& Out);
+	virtual void DoParallelLib(const TestParams& In, RetryResult& Out);
+	virtual void DoOpenMP(const TestParams& In, RetryResult& Out);
+	virtual void DoBoost(const TestParams& In, RetryResult& Out);
+	virtual void DoTBB(const TestParams& In, RetryResult& Out);
+	virtual void DoDlib(const TestParams& In, RetryResult& Out);
 
 public:
 	Test();
@@ -135,10 +145,6 @@ public:
 protected:
 	Test(TestType inType, const std::string& inName);
 
-	virtual void DoSequentially(const TestParams& In, RetryResult& Out);
-	virtual void DoParallelLib(const TestParams& In, RetryResult& Out);
-	virtual void DoOpenMP(const TestParams& In, RetryResult& Out);
-	virtual void DoBoost(const TestParams& In, RetryResult& Out);
-	virtual void DoTBB(const TestParams& In, RetryResult& Out);
-	virtual void DoDlib(const TestParams& In, RetryResult& Out);
+	inline const int& GetTestNum() const  { return testNum; }
+	inline const TargetLibrary& GetRunningLibrary() const  { return runningLibrary; }
 };

@@ -45,6 +45,19 @@ MandelbrotTest::MandelbrotTest(const std::string& inName) : Test(TestType::Mande
 
 MandelbrotTest::~MandelbrotTest() { }
 
+std::string MandelbrotTest::BuildFilename(const TestParams& In)
+{
+	std::stringstream filenameBuilder;
+	filenameBuilder << GetTestName();
+	filenameBuilder << "-" << std::string(LibraryToString(GetRunningLibrary()));
+	filenameBuilder << "-" << std::string(ForScheduleToString(In.forSchedule));
+	filenameBuilder << "-thr" << In.numThreadsToUse;
+	filenameBuilder << "-chunk" << In.forChunkSize;
+	filenameBuilder << "_" << GetTestNum();
+	filenameBuilder << ".ppm";
+	return filenameBuilder.str();
+}
+
 void MandelbrotTest::DoSequentially(const TestParams& In, RetryResult& Out)
 {
 	Out.BeginResourceInit();
@@ -56,7 +69,7 @@ void MandelbrotTest::DoSequentially(const TestParams& In, RetryResult& Out)
 	double PixelHeight = (config.CyMax - config.CyMin) / config.iYmax;
 
 	FILE* fp;
-	std::string filename = "seq1.ppm";
+	std::string filename = BuildFilename(In);
 	std::string comment = "# ";//comment should start with #
 
 	double Cx, Cy;
@@ -101,7 +114,7 @@ void MandelbrotTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 	double PixelHeight = (config.CyMax - config.CyMin) / config.iYmax;
 
 	FILE* fp;
-	std::string filename = "palA.ppm";
+	std::string filename = BuildFilename(In);
 	std::string comment = "# ";//comment should start with #
 
 	//bail-out value , radius of circle ;  
@@ -148,7 +161,7 @@ void MandelbrotTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 	double PixelHeight = (config.CyMax - config.CyMin) / config.iYmax;
 
 	FILE* fp;
-	std::string filename = "ompA.ppm";
+	std::string filename = BuildFilename(In);
 	std::string comment = "# ";//comment should start with #
 
 	double Cx, Cy;
@@ -219,7 +232,7 @@ void MandelbrotTest::DoTBB(const TestParams& In, RetryResult& Out)
 	double PixelHeight = (config.CyMax - config.CyMin) / config.iYmax;
 
 	FILE* fp;
-	std::string filename = "tbbA.ppm";
+	std::string filename = BuildFilename(In);
 	std::string comment = "# ";//comment should start with #
 
 							   //bail-out value , radius of circle ;  
@@ -271,7 +284,58 @@ void MandelbrotTest::DoTBB(const TestParams& In, RetryResult& Out)
 	Out.EndTask(true);
 }
 
+#undef TimeStamp
+#include "dlib/threads/parallel_for_extension.h"
 void MandelbrotTest::DoDlib(const TestParams& In, RetryResult& Out)
 {
-	throw; //base class cannot be tested
+	Out.BeginResourceInit();
+
+	//image data
+	unsigned char* Image = new unsigned char[config.iYmax * config.iXmax * 3];
+
+	double PixelWidth = (config.CxMax - config.CxMin) / config.iXmax;
+	double PixelHeight = (config.CyMax - config.CyMin) / config.iYmax;
+
+	FILE* fp;
+	std::string filename = BuildFilename(In);
+	std::string comment = "# ";//comment should start with #
+
+							   //bail-out value , radius of circle ;  
+	const double EscapeRadius = 2;
+	double ER2 = EscapeRadius * EscapeRadius;
+
+	//create new file, give it a name and open it in binary mode  
+	fopen_s(&fp, filename.c_str(), "wb");
+	fprintf_s(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
+
+	thread_local double Cy;
+	thread_local double Cx;
+	thread_local double Zx;
+	thread_local double Zy;
+	thread_local double Zx2;
+	thread_local double Zy2;
+
+	Out.BeginParallelWorkload();
+
+
+	switch (In.forSchedule)
+	{
+	case ForSchedule::Static:
+		dlib::parallel_for(0, config.iYmax, [&](long iY) { TEST_CORE(0); }, In.forChunkSize);
+		break;
+
+	case ForSchedule::Dynamic:
+		throw; //not available
+
+	case ForSchedule::Guided:
+		throw; //not available
+	}
+
+	Out.BeginResourceCleanup();
+
+	fwrite(Image, 1, config.iXmax * config.iYmax * 3, fp);
+	fclose(fp);
+	delete Image;
+
+	Out.EndTask(true);
 }

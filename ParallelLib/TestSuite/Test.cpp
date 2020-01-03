@@ -27,6 +27,7 @@ const char* ForScheduleToString(ForSchedule Schedule)
 	case ForSchedule::Static:  return "static";
 	case ForSchedule::Dynamic: return "dynamic";
 	case ForSchedule::Guided:  return "guided";
+	case ForSchedule::None:    return "none";
 	}
 	throw; //unsupported library
 	return "";
@@ -131,15 +132,17 @@ bool TestResult::DidTestSucceed() const
 // --------------------- TEST CLASS ---------------------
 
 Test::Test() : type(TestType::None) { throw; } //this should never be used
-Test::Test(TestType inType, const std::string& inName) : type(inType), name(inName) { }
+Test::Test(TestType inType, const std::string& inName) : type(inType), name(inName), testNum(0) { }
 
 Test::~Test() { }
 
 void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams& inParams, std::vector<TestResult>& results)
 {
 	results.empty();
-	for (const TargetLibrary& lib : targetLibs)
+	for (const TargetLibrary lib : targetLibs)
 	{
+		runningLibrary = lib;
+
 		if (inParams.bVerboseStats)
 		{
 			printf("Testing library %s:\n", LibraryToString(lib));
@@ -150,6 +153,8 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 
 		for (int i = 0; i < inParams.numTestRepeatitions; ++i)
 		{
+			testNum = i;
+
 			if (inParams.bVerboseStats)
 			{
 				printf("\tTest %d:\t", i);
@@ -183,6 +188,7 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 			case TargetLibrary::dlib:
 				DoDlib(inParams, retryResult);
 				break;
+
 			//case TargetLibrary::Boost:
 			//	DoBoost(inParams, retryResult);
 			//	break;

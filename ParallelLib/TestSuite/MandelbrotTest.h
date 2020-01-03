@@ -1,5 +1,6 @@
 #pragma once
 #include "Test.h"
+#include <string>
 
 struct MandelbrotConfig
 {
@@ -33,4 +34,7 @@ protected:
 	virtual void DoBoost(const TestParams& In, RetryResult& Out) override;
 	virtual void DoTBB(const TestParams& In, RetryResult& Out) override;
 	virtual void DoDlib(const TestParams& In, RetryResult& Out) override;
+
+private:
+	std::string BuildFilename(const TestParams& In);
 };
