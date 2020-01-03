@@ -1,6 +1,7 @@
 #include "ParallelFor.h"
 #include <functional>
 #include <thread>
+#include <cmath>
 
 pForChunkDispenser::pForChunkDispenser(const int& Init, const int& Target, const int& Increment)
 	: init(Init)
