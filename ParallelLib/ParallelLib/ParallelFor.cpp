@@ -70,7 +70,7 @@ bool pForChunkDispenserDynamic::GetNextChunk(pForChunk& NextChunk)
 
 	int currentTo = currentBegin + (increment * (itersPerChunk - 1));
 	if ((increment > 0 && currentTo > target) || (increment < 0 && currentTo < target))
-		currentTo = target;
+		currentTo = target + (increment > 0 ? -1 : 1);
 
 	NextChunk.Init(currentBegin, currentTo, increment);
 	currentBegin = currentTo + increment;

@@ -7,7 +7,7 @@
 //note: I could use actual typedef here, but C++'s strong typing would
 //not allow to perform std::chrono operations on the custom types anymore
 #define TimeStamp std::chrono::steady_clock::time_point
-#define TimeSpan long long
+#define TimeSpan unsigned long long
 
 // ----------------------- ENUMS -----------------------
 
@@ -16,15 +16,19 @@ enum class ForSchedule : unsigned char
 {
 	Static = 0,
 	Dynamic = 1,
-	Guided = 2
+	Guided = 2,
+	None = 255
 };
+const char* ForScheduleToString(ForSchedule Schedule); //ToString method for this enum
 
 //tested library
 enum class TargetLibrary : unsigned char
 {
-	OpenMP = 1,
-	ParallelLib = 2,
-	Boost = 4
+	NoLibrary = 1, //do sequentially
+	OpenMP = 2,
+	ParallelLib = 4,
+	IntelTBB = 8,
+	dlib = 16
 };
 const char* LibraryToString(TargetLibrary Library); //ToString method for this enum
 
@@ -62,6 +66,7 @@ struct TestParams
 	const bool bVerboseTest; //print task progress and time stats
 	const int numThreadsToUse; //how many threads to use in the algorithm
 	const ForSchedule forSchedule; //which for schedule to use in for-based parallelism
+	const int forChunkSize; //size of chunks for static and dynamic for loops
 	void* userData; //additional test-class-specific helper data
 
 	TestParams(
@@ -70,6 +75,7 @@ struct TestParams
 		const bool _bVerboseTest,
 		const int _numThreadsToUse,
 		const ForSchedule _forSchedule,
+		const int _forChunkSize,
 		void* _userData);
 };
 
@@ -86,14 +92,14 @@ public:
 
 	RetryResult();
 	void BeginResourceInit();
-	void BeginParallWorkload();
+	void BeginParallelWorkload();
 	void BeginResourceCleanup();
 	void EndTask(bool bSucceeded);
 
 	inline const TimeSpan& GetResourceInitDuration() const { return phaseTime[0]; }
 	inline const TimeSpan& GetParallelWorkloadDuration() const { return phaseTime[1]; }
-	inline const TimeSpan& GetResourceCleanupDuration() const { return phaseTime[3]; }
-	inline const bool& GetTaskSucceeded() const { return (testState == TestPhase::TaskEndedSuccessfully); }
+	inline const TimeSpan& GetResourceCleanupDuration() const { return phaseTime[2]; }
+	inline const bool GetTaskSucceeded() const { return (testState == TestPhase::TaskEndedSuccessfully); }
 };
 
 //full test result, includes all test retries
@@ -103,9 +109,9 @@ struct TestResult
 	std::vector<RetryResult> perTryResults;
 	void* userData; //additional test-class-specific helper data
 
-	int GetNumTestRepeatitions() const;
-	int GetAverageResultTime() const; //returns mean average of all test times
-	bool DidTestFail() const; //test is considered failed if the last testPhase is not a successful task end
+	size_t GetNumTestRepeatitions() const;
+	TimeSpan GetAverageResultTime() const; //returns mean average of all test times
+	bool DidTestSucceed() const; //test is considered failed if the last testPhase is not a successful task end
 
 	TestResult(const TargetLibrary _testedLibrary);
 };
@@ -117,6 +123,15 @@ class Test
 private:
 	const TestType type;
 	const std::string name;
+	int testNum;
+	TargetLibrary runningLibrary;
+
+	virtual void DoSequentially(const TestParams& In, RetryResult& Out);
+	virtual void DoParallelLib(const TestParams& In, RetryResult& Out);
+	virtual void DoOpenMP(const TestParams& In, RetryResult& Out);
+	virtual void DoBoost(const TestParams& In, RetryResult& Out);
+	virtual void DoTBB(const TestParams& In, RetryResult& Out);
+	virtual void DoDlib(const TestParams& In, RetryResult& Out);
 
 public:
 	Test();
@@ -128,7 +143,8 @@ public:
 	inline const std::string& GetTestName() const { return name; }
 
 protected:
-	virtual void DoParallelLib(const TestParams& In, RetryResult& Out);
-	virtual void DoOpenMP(const TestParams& In, RetryResult& Out);
-	virtual void DoBoost(const TestParams& In, RetryResult& Out);
+	Test(TestType inType, const std::string& inName);
+
+	inline const int& GetTestNum() const  { return testNum; }
+	inline const TargetLibrary& GetRunningLibrary() const  { return runningLibrary; }
 };
