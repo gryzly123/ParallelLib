@@ -328,4 +328,10 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+
 *.ppm
+ParallelLib/TestSuite/image_filters.cpp
+ParallelLib/TestSuite/mandelbrot.cpp
+ParallelLib/TestSuite/sierpinski.cpp
+ParallelLib/TestSuite/tbb.dll
+ExternalLibraries/tbb-2020.0-win/
