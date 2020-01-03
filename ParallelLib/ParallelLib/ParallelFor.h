@@ -7,7 +7,6 @@
 #include <mutex>
 
 typedef std::function<void(const pExecParams, const int)> ForFunc;
-//#define ForFunc std::function<void(const pExecParams, int)>
 
 namespace std
 {
