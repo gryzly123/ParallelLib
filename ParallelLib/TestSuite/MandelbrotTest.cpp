@@ -324,13 +324,15 @@ void MandelbrotTest::DoDlib(const TestParams& In, RetryResult& Out)
 	thread_local double Zx2;
 	thread_local double Zy2;
 
+	dlib::thread_pool dpool(In.numThreadsToUse);
+
 	Out.BeginParallelWorkload();
 
 
 	switch (In.forSchedule)
 	{
 	case ForSchedule::Static:
-		dlib::parallel_for(0, config.iYmax, [&](long iY) { TEST_CORE(0); }, In.forChunkSize);
+		dlib::parallel_for(dpool, 0, config.iYmax, [&](long iY) { TEST_CORE(0); }, In.forChunkSize);
 		break;
 
 	case ForSchedule::Dynamic:
