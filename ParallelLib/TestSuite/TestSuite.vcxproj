@@ -142,7 +142,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <ConformanceMode>false</ConformanceMode>
       <OpenMPSupport>true</OpenMPSupport>
       <AdditionalIncludeDirectories>$(SolutionDir)\;$(SolutionDir)..\ExternalLibraries\tbb-2020.0-win\tbb\include\;$(SolutionDir)..\ExternalLibraries\dlib\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -159,6 +159,7 @@
     <ClInclude Include="MandelbrotTest.h" />
     <ClInclude Include="Matrix.h" />
     <ClInclude Include="MatrixTest.h" />
+    <ClInclude Include="PrimeTest.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Test.h" />
   </ItemGroup>
@@ -166,6 +167,7 @@
     <ClCompile Include="MandelbrotTest.cpp" />
     <ClCompile Include="Matrix.cpp" />
     <ClCompile Include="MatrixTest.cpp" />
+    <ClCompile Include="PrimeTest.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

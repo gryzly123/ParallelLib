@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "MandelbrotTest.h"
 #include "MatrixTest.h"
+#include "PrimeTest.h"
 
 int InitLibraries()
 {
@@ -74,7 +75,7 @@ int mandelbrot()
 	return 0;
 }
 
-int main()
+int matrix()
 {
 	std::vector<TargetLibrary> sequentialTest = { TargetLibrary::NoLibrary, TargetLibrary::ParallelLib, TargetLibrary::OpenMP, TargetLibrary::IntelTBB, TargetLibrary::dlib };
 
@@ -107,6 +108,49 @@ int main()
 				, ForScheduleToString(ForSchedule::None)
 				, 1
 				, 1
+				, result.DidTestSucceed() ? "succeeded" : "failed"
+				, result.GetAverageResultTime());
+		}
+	}
+
+	getchar();
+	return 0;
+}
+
+int main()
+{
+	std::vector<TargetLibrary> tests1 = { TargetLibrary::NoLibrary };
+	std::vector<TargetLibrary> testsm = { TargetLibrary::ParallelLib, TargetLibrary::OpenMP };
+
+	const int numTestRepeatitions = 50;
+	const char* testName = "PrimeTest";
+	printf("Tested %s (num retries: %d)\n", testName, numTestRepeatitions);
+	printf("LIB\tSCHED\tNUM_THR\tCHUNK_SIZE\tSUCC\tAVG_TIME\n");
+
+	for (int i = 1; i < 9; ++i)
+	{
+		PrimeTestConfig primeConfig = PrimeTestConfig();
+		PrimeTest test = PrimeTest(testName, primeConfig);
+		TestParams config(
+			false,               //const bool _bVerboseStats,
+			numTestRepeatitions, //const int _numTestRepeatitions,
+			true,                //const bool _bVerboseTest,
+			i,                   //const int _numThreadsToUse,
+			ForSchedule::Static, //const ForSchedule _forSchedule,
+			10,                  //const int forChunkSize,
+			nullptr              //void* _userData
+		);
+
+		std::vector<TestResult> perLibraryResults;
+		test.PerformTests(i == 1 ? tests1 : testsm, config, perLibraryResults);
+
+		for (const TestResult& result : perLibraryResults)
+		{
+			printf("%s\t%s\t%d\t%d\t%s\t%llu\n"
+				, LibraryToString(result.testedLibrary)
+				, ForScheduleToString(ForSchedule::None)
+				, i
+				, 0
 				, result.DidTestSucceed() ? "succeeded" : "failed"
 				, result.GetAverageResultTime());
 		}

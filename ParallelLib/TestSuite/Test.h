@@ -50,7 +50,8 @@ enum class TestType : unsigned char
 	MatrixMultiplication = 1,
 	Mandelbrot = 2,
 	ImageFilters = 3,
-	Sierpinski = 4
+	Sierpinski = 4,
+	PrimeNumbers = 5
 };
 
 // ----------------------- STRUCTS -----------------------
