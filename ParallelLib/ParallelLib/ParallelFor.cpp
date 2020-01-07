@@ -55,8 +55,8 @@ pForChunkDispenserDynamic::pForChunkDispenserDynamic(const int& Init, const int&
 	: pForChunkDispenser(Init, Target, Increment)
 {
 	itersPerChunk = NumIters;
-	int totalNumIters = std::floor(static_cast<double>(Target - Init) / static_cast<double>(Increment));
-	numDynamicChunks = std::floor(static_cast<double>(totalNumIters) / static_cast<double>(NumIters));
+	int totalNumIters = (int)std::floor(static_cast<double>(Target - Init) / static_cast<double>(Increment));
+	numDynamicChunks = (int)std::floor(static_cast<double>(totalNumIters) / static_cast<double>(NumIters));
 }
 
 bool pForChunkDispenserDynamic::GetNextChunk(pForChunk& NextChunk)
