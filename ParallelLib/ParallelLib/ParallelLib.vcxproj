@@ -116,21 +116,21 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ExecParams.cpp" />
+    <ClCompile Include="ParallelBase.cpp" />
     <ClCompile Include="ParallelFor.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ParallelDo.cpp" />
     <ClCompile Include="ParallelSections.cpp" />
-    <ClCompile Include="Schedule.cpp" />
     <ClCompile Include="SetOnce.cpp" />
     <ClCompile Include="Singleton.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ExecParams.h" />
+    <ClInclude Include="ParallelBase.h" />
     <ClInclude Include="ParallelFor.h" />
     <ClInclude Include="ParallelDo.h" />
     <ClInclude Include="ParallelLib.h" />
     <ClInclude Include="ParallelSections.h" />
-    <ClInclude Include="Schedule.h" />
     <ClInclude Include="SetOnce.h" />
     <ClInclude Include="Singleton.h" />
   </ItemGroup>

@@ -108,7 +108,7 @@ void pForChunk::Do(const pExecParams& Params, ForFunc& Func)
 }
 
 pFor::pFor() { }
-pFor::~pFor() { if (bNoWait.Get()) CleanupThreads(); }
+pFor::~pFor() { }
 
 pFor& pFor::NumThreads(int _NumThreads)
 {
@@ -195,14 +195,4 @@ void pFor::BeginExecuteChunks(pExecParams Params, ForFunc Func)
 		currentChunk.Do(Params, Func);
 		if (bIsStatic) return; //ensure that one thread doesn't get two static chunks
 	}
-}
-
-void pFor::CleanupThreads()
-{
-	for (int i = 0; i < actualNumThreads; ++i)
-	{
-		threads[i]->join();
-		delete threads[i];
-	}
-	delete[] threads;
 }

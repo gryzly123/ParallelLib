@@ -1,23 +1,15 @@
 #pragma once
-#include "SetOnce.h"
-#include "ExecParams.h"
-#include <functional>
+#include "ParallelBase.h"
 
 namespace std
 {
 	class thread;
 }
 
-class pDo
+class pDo : public pParallelBase
 {
 private:
 	pSetOnce<int> numThreads;
-	pSetOnce<bool> bNoWait;
-	pSetOnce<bool> bExecuteOnMaster;
-	std::thread** threads;
-	int actualNumThreads;
-
-	void CleanupThreads();
 
 public:
 

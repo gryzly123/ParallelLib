@@ -1,9 +1,6 @@
 #pragma once
 #include "Singleton.h"
-#include "Schedule.h"
-#include "SetOnce.h"
-#include "ExecParams.h"
-#include <functional>
+#include "ParallelBase.h"
 #include <mutex>
 
 typedef std::function<void(const pExecParams, const int)> ForFunc;
@@ -12,6 +9,13 @@ namespace std
 {
 	class thread;
 }
+
+enum class pSchedule : unsigned char
+{
+	Static = 0,
+	Dynamic = 1,
+	Guided = 2
+};
 
 class pForChunk
 {
@@ -69,17 +73,14 @@ public:
 	virtual bool GetNextChunk(pForChunk& NextChunk) override;
 };
 
-class pFor
+class pFor : public pParallelBase
 {
 private:
 	pSetOnce<int> numThreads;
 	pSetOnce<int> chunkSize;
-	pSetOnce<bool> bNoWait;
-	pSetOnce<bool> bExecuteOnMaster;
 	pSetOnce<pSchedule> schedule;
+
 	pForChunkDispenser* Data;
-	std::thread** threads;
-	int actualNumThreads;
 
 public:
 
@@ -98,8 +99,6 @@ public:
 	pFor& Schedule(pSchedule _Schedule);
 
 	void Do(const int Init, const int Target, const int Increment, ForFunc Function);
-
-	void CleanupThreads();
 
 private:
 	static void BeginExecuteChunks(pExecParams Params, ForFunc Function);

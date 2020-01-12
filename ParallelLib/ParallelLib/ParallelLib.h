@@ -16,9 +16,9 @@
 	#include "SetOnce.h"
 	#include "ExecParams.h"
 	#include "Singleton.h"
-	#include "Schedule.h"
 
 //main parallel structures
+	#include "ParallelBase.h"
 	#include "ParallelDo.h"
 	#include "ParallelFor.h"
 	#include "ParallelSections.h"

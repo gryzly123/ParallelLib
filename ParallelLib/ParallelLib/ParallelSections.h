@@ -1,24 +1,13 @@
 #pragma once
-#include "SetOnce.h"
-#include "ExecParams.h"
-#include <functional>
-#include <vector>
+#include "ParallelBase.h"
 
 namespace std
 {
 	class thread;
 }
 
-class pSections
+class pSections : public pParallelBase
 {
-private:
-	pSetOnce<bool> bNoWait;
-	pSetOnce<bool> bExecuteOnMaster;
-	std::thread** threads;
-	int actualNumThreads;
-
-	void CleanupThreads();
-
 public:
 	
 	pSections();

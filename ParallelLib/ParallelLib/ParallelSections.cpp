@@ -3,19 +3,7 @@
 
 pSections::pSections() { }
 
-pSections::~pSections() { if (bNoWait.Get()) CleanupThreads(); }
-
-void pSections::CleanupThreads()
-{
-	if (actualNumThreads == 0) return;
-
-	for (int i = 0; i < actualNumThreads; ++i)
-	{
-		threads[i]->join();
-		delete threads[i];
-	}
-	delete[] threads;
-}
+pSections::~pSections() { }
 
 pSections& pSections::NoWait(bool _NoWait)
 {
