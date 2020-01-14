@@ -1,7 +1,10 @@
 #include "stdafx.h"
+#include "PrioritySetter.h"
+
 #include "MandelbrotTest.h"
 #include "MatrixTest.h"
 #include "PrimeTest.h"
+
 
 int InitLibraries()
 {
@@ -119,6 +122,8 @@ int matrix()
 
 int main()
 {
+	PrioritySetter::SetPriority(Priority::Realtime);
+
 	std::vector<TargetLibrary> tests1 = { TargetLibrary::NoLibrary };
 	std::vector<TargetLibrary> testsm = { TargetLibrary::ParallelLib, TargetLibrary::OpenMP };
 
