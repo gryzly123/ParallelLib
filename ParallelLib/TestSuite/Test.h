@@ -149,3 +149,8 @@ protected:
 	inline const int& GetTestNum() const  { return testNum; }
 	inline const TargetLibrary& GetRunningLibrary() const  { return runningLibrary; }
 };
+
+#ifndef IN_TEST_CPP
+	#undef TimeStamp
+	#undef TimeSpan
+#endif

@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#define IN_TEST_CPP 1
 #include "Test.h"
 #include "tbb/task_scheduler_init.h"
 

@@ -125,7 +125,7 @@ int main()
 	PrioritySetter::SetPriority(Priority::Realtime);
 
 	std::vector<TargetLibrary> tests1 = { TargetLibrary::NoLibrary };
-	std::vector<TargetLibrary> testsm = { TargetLibrary::ParallelLib, TargetLibrary::OpenMP };
+	std::vector<TargetLibrary> testsm = { TargetLibrary::ParallelLib, TargetLibrary::OpenMP, TargetLibrary::IntelTBB };
 
 	const int numTestRepeatitions = 50;
 	const char* testName = "PrimeTest";
