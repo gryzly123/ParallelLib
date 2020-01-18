@@ -131,8 +131,9 @@ void PrimeTest::DoTBB(const TestParams& In, RetryResult& Out)
 	Out.EndTask(true);
 }
 
-/*
 
+#include <dlib/threads.h>   //for dlib::mutex, signaler, thread
+#include <dlib/misc_api.h>  //for dlib::sleep
 struct data
 {
 	std::vector<int> primes;
@@ -141,13 +142,27 @@ struct data
 	dlib::mutex primesLock;
 	dlib::mutex searchedIndexLock;
 	dlib::mutex threadLock;
-	dlib::signaler threadSignaler;
+	int numThreads;
+	dlib::signaler& threadSignaler;
 
-	data(int minRange, int maxRange)
+	data(int minRange, int maxRange, int numThreads)
 		: threadSignaler(dlib::signaler(threadLock))
 		, currentSearchedIndex(minRange)
 		, maxR(maxRange)
+		, numThreads(numThreads)
 	{ }
+
+	void pop_thread()
+	{
+		threadLock.lock();
+		--numThreads;
+		threadLock.unlock();
+	}
+
+	bool is_done()
+	{
+		return (numThreads == 0);
+	}
 };
 void dlibPrime(void* something)
 {
@@ -156,31 +171,31 @@ void dlibPrime(void* something)
 	{
 		int localSearchedIndex;
 		{
-			//const std::lock_guard<std::mutex> lock_index(searchedIndexLock);
 			dlib_data->searchedIndexLock.lock();
 			dlib_data->currentSearchedIndex++;
 			localSearchedIndex = dlib_data->currentSearchedIndex;
 			dlib_data->searchedIndexLock.unlock();
 		}
 
-		if (localSearchedIndex > dlib_data->maxR) break;
-
-		if (IsPrime(localSearchedIndex))
+		if (localSearchedIndex > dlib_data->maxR)
 		{
-			//const std::lock_guard<std::mutex> lock_primes(primesLock);
+			dlib_data->pop_thread();
+			break;
+		}
+
+		if (PrimeTest::IsPrime(localSearchedIndex))
+		{
 			dlib_data->primesLock.lock();
-			dlib_data->primes.push_back(dlib_data->localSearchedIndex);
+			dlib_data->primes.push_back(localSearchedIndex);
 			dlib_data->primesLock.unlock();
 		}
 	}
 }
-
-#include <dlib/threads.h>
 void PrimeTest::DoDlib(const TestParams& In, RetryResult& Out)
 {
 	Out.BeginResourceInit();
 
-	data dlib_data(testConfig.searchRangeMin, testConfig.searchRangeMax);
+	data dlib_data(testConfig.searchRangeMin, testConfig.searchRangeMax, In.numThreadsToUse);
 
 	Out.BeginParallelWorkload();
 
@@ -188,12 +203,13 @@ void PrimeTest::DoDlib(const TestParams& In, RetryResult& Out)
 	{
 		dlib::create_new_thread(dlibPrime, (void*)&dlib_data);
 	}
+	while (!dlib_data.is_done()) dlib::sleep(1);
 
 	Out.BeginResourceCleanup();
 	//printf("pll-Result: %d primes. Last prime %d\n", primes.size(), primes.back());
 	Out.EndTask(true);
 }
-*/
+
 
 #include "ParallelLib/ParallelLib.h"
 void PrimeTest::DoParallelLib(const TestParams& In, RetryResult& Out)

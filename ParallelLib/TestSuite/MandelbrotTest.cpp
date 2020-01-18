@@ -223,11 +223,6 @@ void MandelbrotTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 	Out.EndTask(true);
 }
 
-void MandelbrotTest::DoBoost(const TestParams & In, RetryResult & Out)
-{
-	throw;
-}
-
 #define TBB_USE_EXCEPTIONS 0
 #include "tbb/parallel_for.h"
 void MandelbrotTest::DoTBB(const TestParams& In, RetryResult& Out)

@@ -160,7 +160,9 @@
     <ClInclude Include="Matrix.h" />
     <ClInclude Include="MatrixTest.h" />
     <ClInclude Include="PrimeTest.h" />
+    <ClInclude Include="PrioritySetter.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StringTest.h" />
     <ClInclude Include="Test.h" />
   </ItemGroup>
   <ItemGroup>
@@ -168,6 +170,7 @@
     <ClCompile Include="Matrix.cpp" />
     <ClCompile Include="MatrixTest.cpp" />
     <ClCompile Include="PrimeTest.cpp" />
+    <ClCompile Include="PrioritySetter.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -175,6 +178,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="StringTest.cpp" />
     <ClCompile Include="Test.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

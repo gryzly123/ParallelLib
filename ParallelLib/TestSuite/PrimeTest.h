@@ -24,6 +24,5 @@ protected:
 	virtual void DoParallelLib(const TestParams& In, RetryResult& Out) override;
 	virtual void DoOpenMP(const TestParams& In, RetryResult& Out) override;
 	virtual void DoTBB(const TestParams& In, RetryResult& Out) override;
-	//virtual void DoDlib(const TestParams& In, RetryResult& Out) override;
+	virtual void DoDlib(const TestParams& In, RetryResult& Out) override;
 };
-

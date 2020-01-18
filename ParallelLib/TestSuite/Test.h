@@ -49,9 +49,8 @@ enum class TestType : unsigned char
 	None = 0,
 	MatrixMultiplication = 1,
 	Mandelbrot = 2,
-	ImageFilters = 3,
-	Sierpinski = 4,
-	PrimeNumbers = 5
+	PrimeNumbers = 3,
+	StringTest = 4
 };
 
 // ----------------------- STRUCTS -----------------------
@@ -130,7 +129,6 @@ private:
 	virtual void DoSequentially(const TestParams& In, RetryResult& Out);
 	virtual void DoParallelLib(const TestParams& In, RetryResult& Out);
 	virtual void DoOpenMP(const TestParams& In, RetryResult& Out);
-	virtual void DoBoost(const TestParams& In, RetryResult& Out);
 	virtual void DoTBB(const TestParams& In, RetryResult& Out);
 	virtual void DoDlib(const TestParams& In, RetryResult& Out);
 

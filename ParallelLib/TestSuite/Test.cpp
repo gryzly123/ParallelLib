@@ -9,13 +9,11 @@ const char* LibraryToString(TargetLibrary Library)
 {
 	switch (Library)
 	{
-	case TargetLibrary::NoLibrary:   return "Sequential";
-	case TargetLibrary::OpenMP:      return "OpenMP";
+	case TargetLibrary::NoLibrary:   return "Sequential ";
+	case TargetLibrary::OpenMP:      return "OpenMP     ";
 	case TargetLibrary::ParallelLib: return "ParallelLib";
-	case TargetLibrary::IntelTBB:    return "IntelTBB";
-	case TargetLibrary::dlib:        return "dlib";
-	//case TargetLibrary::Boost:       return "Boost";
-	//case TargetLibrary::MicrosoftPPL:       return "Microsoft PPL";
+	case TargetLibrary::IntelTBB:    return "IntelTBB   ";
+	case TargetLibrary::dlib:        return "dlib       ";
 	}
 	throw; //unsupported library
 	return "";
@@ -189,10 +187,6 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 			case TargetLibrary::dlib:
 				DoDlib(inParams, retryResult);
 				break;
-
-			//case TargetLibrary::Boost:
-			//	DoBoost(inParams, retryResult);
-			//	break;
 			default:
 				throw; //unsupported library
 			}
@@ -230,11 +224,6 @@ void Test::DoParallelLib(const TestParams& In, RetryResult& Out)
 }
 
 void Test::DoOpenMP(const TestParams& In, RetryResult& Out)
-{
-	throw; //base class cannot be tested
-}
-
-void Test::DoBoost(const TestParams& In, RetryResult& Out)
 {
 	throw; //base class cannot be tested
 }
