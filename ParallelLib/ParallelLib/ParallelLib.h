@@ -78,7 +78,8 @@
 
 //variables available in parallel blocks
 
-	#define THREAD_ID ___pExecParams.ThreadId
+	#define THREAD_ID    ___pExecParams.ThreadId
+	#define THREAD_COUNT ___pExecParams.NumThreads
 
 //functions available in parallel blocks
 

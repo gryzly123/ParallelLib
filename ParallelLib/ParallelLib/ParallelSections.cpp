@@ -41,8 +41,8 @@ void pSections::Do(std::vector<std::function<void(const pExecParams)>> Funcs)
 
 	//execution
 	for (int i = 0; i < actualNumThreads; ++i)
-		threads[i] = new std::thread(Funcs[i], pExecParams(this, i));
-	if (bExecuteOnMaster.Get()) Funcs[actualNumThreads](pExecParams(this, MASTER_TASK));
+		threads[i] = new std::thread(Funcs[i], pExecParams(this, i, Funcs.size()));
+	if (bExecuteOnMaster.Get()) Funcs[actualNumThreads](pExecParams(this, MASTER_TASK, Funcs.size()));
 
 	//join
 	if (!bNoWait.Get())

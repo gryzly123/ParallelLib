@@ -173,9 +173,9 @@ void pFor::Do(const int Init, const int Target, const int Increment, ForFunc Fun
 	//execution
 	for (int i = 0; i < actualNumThreads; ++i)
 	{
-		threads[i] = new std::thread(pFor::BeginExecuteChunks, pExecParams(this, i), Function);
+		threads[i] = new std::thread(pFor::BeginExecuteChunks, pExecParams(this, i, numThreads.Get()), Function);
 	}
-	if (bExecuteOnMaster.Get()) BeginExecuteChunks(pExecParams(this, MASTER_TASK), Function);
+	if (bExecuteOnMaster.Get()) BeginExecuteChunks(pExecParams(this, MASTER_TASK, numThreads.Get()), Function);
 
 	//join
 	if (!bNoWait.Get())

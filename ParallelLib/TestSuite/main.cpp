@@ -117,7 +117,7 @@ int matrix()
 	return 0;
 }
 
-int main()
+int prime()
 {
 	std::vector<TargetLibrary> tests1 = { TargetLibrary::NoLibrary };
 	std::vector<TargetLibrary> testsm = { TargetLibrary::ParallelLib, TargetLibrary::OpenMP };
@@ -160,3 +160,19 @@ int main()
 	return 0;
 }
 
+int main()
+{
+	while (true)
+	{
+		unsigned int targetTest = 0;
+		std::cout << "Select test (1=mandelbrot, 2=matrix, 3=prime): ";
+		std::cin >> targetTest;
+		switch (targetTest)
+		{
+		case 1: mandelbrot(); break;
+		case 2: matrix(); break;
+		case 3: prime(); break;
+		default: return 0;
+		}
+	}
+}
