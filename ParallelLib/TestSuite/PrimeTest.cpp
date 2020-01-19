@@ -139,10 +139,10 @@ struct data
 	dlib::mutex searchedIndexLock;
 	dlib::mutex threadLock;
 	int numThreads;
-	dlib::signaler& threadSignaler;
+	dlib::signaler threadSignaler;
 
 	data(int minRange, int maxRange, int numThreads)
-		: threadSignaler(dlib::signaler(threadLock))
+		: threadSignaler(threadLock)
 		, currentSearchedIndex(minRange)
 		, maxR(maxRange)
 		, numThreads(numThreads)

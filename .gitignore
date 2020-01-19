@@ -340,3 +340,5 @@ ParallelLib/TestSuite/sierpinski.cpp
 ParallelLib/TestSuite/tbb.dll
 
 ExternalLibraries/tbb-2020.0-win/
+ExternalLibraries/tbb-2020.0-lin/
+ParallelLib/testbin/

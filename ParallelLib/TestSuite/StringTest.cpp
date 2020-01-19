@@ -165,12 +165,17 @@ void StringTest::DoSequentially(const TestParams& In, RetryResult& Out)
 	Out.EndTask(true);
 }
 
-#ifndef __GCC__
+#ifndef __GNUC__
 #include <Windows.h>
 #define ___sleep(ms) Sleep(ms)
 #else
-#include <unistd>
-#define ___sleep(ms) sleep(ms)
+void ___sleep(int ms)
+{
+    struct timespec time, outtime;
+    time.tv_sec = ms / 1000;
+    time.tv_nsec = (ms % 1000) * 1000000;
+    nanosleep(&time, &outtime);
+}
 #endif
 
 //void ConsumerThread(StringList*& targetArray, bool& bProductionCompleted,)
@@ -633,7 +638,7 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 				}
 			}
 			bProductionCompleted = true;
-		},
+		}
 		parallel_section
 		{
 			StringList* UpperPtr = nullptr;
@@ -685,7 +690,7 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 					UpperPtr = NewUpper;
 				}
 			}
-		},
+		}
 		parallel_section
 		{
 			StringList* LowerPtr = nullptr;
@@ -738,7 +743,7 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 					LowerPtr = NewLower;
 				}
 			}
-		},
+		}
 		parallel_section
 		{
 			StringList* AlternatedPtr = nullptr;

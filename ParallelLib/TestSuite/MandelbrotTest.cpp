@@ -244,8 +244,8 @@ void MandelbrotTest::DoTBB(const TestParams& In, RetryResult& Out)
 	double ER2 = EscapeRadius * EscapeRadius;
 
 	//create new file, give it a name and open it in binary mode  
-	fopen_s(&fp, filename.c_str(), "wb");
-	fprintf_s(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
+	OPENFILE(fp, filename.c_str(), "wb");
+	WRITE(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
 	
 	thread_local double Cy;
 	thread_local double Cx;
@@ -309,8 +309,8 @@ void MandelbrotTest::DoDlib(const TestParams& In, RetryResult& Out)
 	double ER2 = EscapeRadius * EscapeRadius;
 
 	//create new file, give it a name and open it in binary mode  
-	fopen_s(&fp, filename.c_str(), "wb");
-	fprintf_s(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
+	OPENFILE(fp, filename.c_str(), "wb");
+	WRITE(fp, "P6\n %s\n %d\n %d\n %d\n", comment.c_str(), config.iXmax, config.iYmax, config.MaxColorComponentValue);
 
 	thread_local double Cy;
 	thread_local double Cx;
