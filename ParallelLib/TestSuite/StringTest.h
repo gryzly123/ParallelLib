@@ -13,11 +13,10 @@ struct StringList
 		string = new char[len];
 	}
 
-	void remove_chain()
+	~StringList()
 	{
 		if (next != nullptr)
 		{
-			next->remove_chain();
 			delete next;
 		}
 		delete[] string;

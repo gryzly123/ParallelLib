@@ -71,70 +71,97 @@ void StringTest::StringAlternate(char* buffer, int len)
 void StringTest::DoSequentially(const TestParams& In, RetryResult& Out)
 {
 	Out.BeginResourceInit();
-
-	StringList ProducedStrings, UpperStrings, LowerStrings, AlternatedStrings;
-	StringList* ProducedPtr   = &ProducedStrings;
-	StringList* UpperPtr      = &UpperStrings;
-	StringList* LowerPtr      = &LowerStrings;
-	StringList* AlternatedPtr = &AlternatedStrings;
-
-	Out.BeginParallelWorkload();
-
-	for (int i = 0; i < testConfig.numStringsToGenerate; ++i)
 	{
-		StringList* NewProduced = new StringList();
-		NewProduced->allocate_string(testConfig.stringLen);
-		GenerateRandomString(NewProduced->string, NewProduced->len);
-		ProducedPtr->next = NewProduced;
-		ProducedPtr = ProducedPtr->next;
+		StringList ProducedStrings, UpperStrings, LowerStrings, AlternatedStrings;
+		StringList* ProducedPtr   = nullptr;
+		StringList* UpperPtr      = nullptr;
+		StringList* LowerPtr      = nullptr;
+		StringList* AlternatedPtr = nullptr;
+
+		Out.BeginParallelWorkload();
+
+		for (int i = 0; i < testConfig.numStringsToGenerate; ++i)
+		{
+			StringList* NewProduced = (ProducedPtr != nullptr) ? new StringList() : &ProducedStrings;
+			NewProduced->allocate_string(testConfig.stringLen);
+			GenerateRandomString(NewProduced->string, NewProduced->len);
+			if (ProducedPtr != nullptr)
+			{
+				ProducedPtr->next = NewProduced;
+				ProducedPtr = ProducedPtr->next;
+			}
+			else
+			{
+				ProducedPtr = NewProduced;
+			}
+		}
+
+		StringList* LastProcessedProduced = &ProducedStrings;
+		do
+		{
+			StringList* NewUpper = (UpperPtr != nullptr) ? new StringList() : &UpperStrings;
+			NewUpper->allocate_string(testConfig.stringLen);
+			memcpy(NewUpper->string, LastProcessedProduced->string, LastProcessedProduced->len);
+			StringToUpper(NewUpper->string, NewUpper->len);
+			if (UpperPtr != nullptr)
+			{
+				UpperPtr->next = NewUpper;
+				UpperPtr = UpperPtr->next;
+			}
+			else
+			{
+				UpperPtr = NewUpper;
+			}
+		}
+		while ((LastProcessedProduced = LastProcessedProduced->next) != nullptr);
+
+		LastProcessedProduced = &ProducedStrings;
+		do
+		{
+			StringList* NewLower = (LowerPtr != nullptr) ? new StringList() : &LowerStrings;
+			NewLower->allocate_string(testConfig.stringLen);
+			memcpy(NewLower->string, LastProcessedProduced->string, LastProcessedProduced->len);
+
+			StringToLower(NewLower->string, NewLower->len);
+			if (LowerPtr != nullptr)
+			{
+				LowerPtr->next = NewLower;
+				LowerPtr = LowerPtr->next;
+			}
+			else
+			{
+				LowerPtr = NewLower;
+			}
+
+		}
+		while ((LastProcessedProduced = LastProcessedProduced->next) != nullptr);
+
+		LastProcessedProduced = &ProducedStrings;
+		do
+		{
+			StringList* NewAlternated = (AlternatedPtr != nullptr) ? new StringList() : &AlternatedStrings;
+			NewAlternated->allocate_string(testConfig.stringLen);
+			memcpy(NewAlternated->string, LastProcessedProduced->string, LastProcessedProduced->len);
+
+			StringAlternate(NewAlternated->string, NewAlternated->len);
+			if (AlternatedPtr != nullptr)
+			{
+				AlternatedPtr->next = NewAlternated;
+				AlternatedPtr = AlternatedPtr->next;
+			}
+			else
+			{
+				AlternatedPtr = NewAlternated;
+			}
+
+		}
+		while ((LastProcessedProduced = LastProcessedProduced->next) != nullptr);
+
+		Out.BeginResourceCleanup();
+		//printf("\n\n%s\n%s\n%s\n%s\n\n", ProducedStrings.string, UpperStrings.string, LowerStrings.string, AlternatedStrings.string);
+
+		//note: data will be removed at the end of scope thanks to StringList's destructor
 	}
-
-	StringList* LastProcessedProduced = ProducedPtr;
-	do
-	{
-		StringList* NewUpper = new StringList();
-		NewUpper->allocate_string(testConfig.stringLen);
-		memcpy(NewUpper->string, LastProcessedProduced->string, LastProcessedProduced->len);
-		StringToUpper(NewUpper->string, NewUpper->len);
-		UpperPtr->next = NewUpper;
-		UpperPtr = UpperPtr->next;
-	}
-	while ((LastProcessedProduced = LastProcessedProduced->next) != nullptr);
-
-	LastProcessedProduced = ProducedPtr;
-	do
-	{
-		StringList* NewLower = new StringList();
-		NewLower->allocate_string(testConfig.stringLen);
-		memcpy(NewLower->string, LastProcessedProduced->string, LastProcessedProduced->len);
-
-		StringToLower(NewLower->string, NewLower->len);
-		LowerPtr->next = NewLower;
-		LowerPtr = LowerPtr->next;
-	}
-	while ((LastProcessedProduced = LastProcessedProduced->next) != nullptr);
-
-	LastProcessedProduced = ProducedPtr;
-	do
-	{
-		StringList* NewAlternated = new StringList();
-		NewAlternated->allocate_string(testConfig.stringLen);
-		memcpy(NewAlternated->string, LastProcessedProduced->string, LastProcessedProduced->len);
-
-		StringAlternate(NewAlternated->string, NewAlternated->len);
-		AlternatedPtr->next = NewAlternated;
-		AlternatedPtr = AlternatedPtr->next;
-	}
-	while ((LastProcessedProduced = LastProcessedProduced->next) != nullptr);
-
-	Out.BeginResourceCleanup();
-
-	printf("\n\n%s\n%s\n%s\n%s\n\n", ProducedStrings.next->string, UpperStrings.next->string, LowerStrings.next->string, AlternatedStrings.next->string);
-	ProducedStrings.remove_chain();
-	UpperStrings.remove_chain();
-	LowerStrings.remove_chain();
-	AlternatedStrings.remove_chain();
-
 	Out.EndTask(true);
 }
 
@@ -143,9 +170,224 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 	throw;
 }
 
+#ifndef __GCC__
+#include <Windows.h>
+#define ___sleep(ms) Sleep(ms)
+#else
+#include <unistd>
+#define ___sleep(ms) sleep(ms)
+#endif
+
+//void ConsumerThread(StringList*& targetArray, bool& bProductionCompleted,)
+
 void StringTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 {
-	throw;
+	Out.BeginResourceInit();
+	StringList* ProducedStrings = nullptr;
+	StringList* UpperStrings = nullptr;
+	StringList* LowerStrings = nullptr;
+	StringList* AlternatedStrings = nullptr;
+
+	bool bProductionCompleted = false;
+
+	Out.BeginParallelWorkload();
+
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		{
+			StringList* ProducedPtr = nullptr;
+			for (int i = 0; i < testConfig.numStringsToGenerate; ++i)
+			{
+				StringList* NewProduced = new StringList();
+				NewProduced->allocate_string(testConfig.stringLen);
+				GenerateRandomString(NewProduced->string, NewProduced->len);
+
+				#pragma omp critical(use_producer_object)
+				{
+					if (ProducedPtr != nullptr)
+					{
+						ProducedPtr->next = NewProduced;
+						ProducedPtr = ProducedPtr->next;
+					}
+					else
+					{
+						ProducedStrings = NewProduced;
+						ProducedPtr = NewProduced;
+					}
+				}
+			}
+			bProductionCompleted = true;
+		}
+
+		#pragma omp section
+		{
+			StringList* UpperPtr = nullptr;
+			StringList* LastProcessedProduced = nullptr;
+			bool bNothingToProcess = true;
+			bool bStringsLeft = true;
+			while(bStringsLeft)
+			{
+				while (bNothingToProcess && bStringsLeft)
+				{
+					#pragma omp critical(use_producer_object)
+					{
+						//we haven't consumed anything yet but there is something to consume
+						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
+						{
+							LastProcessedProduced = ProducedStrings;
+							bNothingToProcess = false;
+						}
+						//is there next item to consume?
+						else if (LastProcessedProduced != nullptr && LastProcessedProduced->next != nullptr)
+						{
+							LastProcessedProduced = LastProcessedProduced->next;
+							bNothingToProcess = false;
+						}
+						//no more items and producer claims it's finished
+						else if(bProductionCompleted)
+						{
+							bStringsLeft = false;
+						}
+					}
+					___sleep(1);
+				}
+				if (!bStringsLeft) break;
+
+				StringList* NewUpper = new StringList();
+				NewUpper->allocate_string(testConfig.stringLen);
+				memcpy(NewUpper->string, LastProcessedProduced->string, LastProcessedProduced->len);
+				StringToUpper(NewUpper->string, NewUpper->len);
+				bNothingToProcess = true;
+				if (UpperPtr != nullptr)
+				{
+					UpperPtr->next = NewUpper;
+					UpperPtr = UpperPtr->next;
+				}
+				else
+				{
+					UpperStrings = NewUpper;
+					UpperPtr = NewUpper;
+				}
+			}
+		}
+
+		#pragma omp section
+		{
+			StringList* LowerPtr = nullptr;
+			StringList* LastProcessedProduced = nullptr;
+			bool bNothingToProcess = true;
+			bool bStringsLeft = true;
+			while (bStringsLeft)
+			{
+				while (bNothingToProcess && bStringsLeft)
+				{
+					#pragma omp critical(use_producer_object)
+					{
+						//we haven't consumed anything yet but there is something to consume
+						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
+						{
+							LastProcessedProduced = ProducedStrings;
+							bNothingToProcess = false;
+						}
+						//is there next item to consume?
+						else if (LastProcessedProduced != nullptr && LastProcessedProduced->next != nullptr)
+						{
+							LastProcessedProduced = LastProcessedProduced->next;
+							bNothingToProcess = false;
+						}
+						//no more items and producer claims it's finished
+						else if (bProductionCompleted)
+						{
+							bStringsLeft = false;
+						}
+					}
+					___sleep(1);
+				}
+				if (!bStringsLeft) break;
+
+				StringList* NewLower = new StringList();
+				NewLower->allocate_string(testConfig.stringLen);
+				memcpy(NewLower->string, LastProcessedProduced->string, LastProcessedProduced->len);
+
+				StringToLower(NewLower->string, NewLower->len);
+				bNothingToProcess = true;
+				if (LowerPtr != nullptr)
+				{
+					LowerPtr->next = NewLower;
+					LowerPtr = LowerPtr->next;
+				}
+				else
+				{
+					LowerStrings = NewLower;
+					LowerPtr = NewLower;
+				}
+			}
+		}
+
+		#pragma omp section
+		{
+			StringList* AlternatedPtr = nullptr;
+			StringList* LastProcessedProduced = nullptr;
+			bool bNothingToProcess = true;
+			bool bStringsLeft = true;
+			while (bStringsLeft)
+			{
+				while (bNothingToProcess && bStringsLeft)
+				{
+					#pragma omp critical(use_producer_object)
+					{
+						//we haven't consumed anything yet but there is something to consume
+						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
+						{
+							LastProcessedProduced = ProducedStrings;
+							bNothingToProcess = false;
+						}
+						//is there next item to consume?
+						else if (LastProcessedProduced != nullptr && LastProcessedProduced->next != nullptr)
+						{
+							LastProcessedProduced = LastProcessedProduced->next;
+							bNothingToProcess = false;
+						}
+						//no more items and producer claims it's finished
+						else if (bProductionCompleted)
+						{
+							bStringsLeft = false;
+						}
+					}
+					___sleep(1);
+				}
+				if (!bStringsLeft) break;
+
+				StringList* NewAlternated = new StringList();
+				NewAlternated->allocate_string(testConfig.stringLen);
+				memcpy(NewAlternated->string, LastProcessedProduced->string, LastProcessedProduced->len);
+
+				StringAlternate(NewAlternated->string, NewAlternated->len);
+				bNothingToProcess = true;
+				if (AlternatedPtr != nullptr)
+				{
+					AlternatedPtr->next = NewAlternated;
+					AlternatedPtr = AlternatedPtr->next;
+				}
+				else
+				{
+					AlternatedStrings = NewAlternated;
+					AlternatedPtr = NewAlternated;
+				}
+			}
+		}
+	}
+
+	Out.BeginResourceCleanup();
+	
+	printf("\n\n%s\n%s\n%s\n%s\n\n", ProducedStrings->string, UpperStrings->string, LowerStrings->string, AlternatedStrings->string);
+	delete ProducedStrings;
+	delete UpperStrings;
+	delete LowerStrings;
+	delete AlternatedStrings;
+	
+	Out.EndTask(true);
 }
 
 void StringTest::DoTBB(const TestParams& In, RetryResult& Out)
