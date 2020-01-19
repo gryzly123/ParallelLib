@@ -6,12 +6,6 @@
 #include "PrimeTest.h"
 #include "StringTest.h"
 
-int InitLibraries()
-{
-	//Intel TBB
-
-}
-
 int mandelbrot()
 {
 	std::vector<TargetLibrary> sequentialTest    = { TargetLibrary::NoLibrary };
@@ -74,7 +68,6 @@ int mandelbrot()
 		}
 	}
 
-	getchar();
 	return 0;
 }
 
@@ -116,7 +109,6 @@ int matrix()
 		}
 	}
 
-	getchar();
 	return 0;
 }
 
@@ -161,14 +153,11 @@ int primes()
 		}
 	}
 
-	getchar();
 	return 0;
 }
 
-int main()
+int string()
 {
-	PrioritySetter::SetPriority(Priority::Realtime);
-
 	std::vector<TargetLibrary> tests = { TargetLibrary::NoLibrary, TargetLibrary::ParallelLib, TargetLibrary::OpenMP, TargetLibrary::IntelTBB };
 
 	const int numTestRepeatitions = 25;
@@ -203,7 +192,25 @@ int main()
 	}
 	
 
-	getchar();
 	return 0;
 }
 
+int main()
+{
+	PrioritySetter::SetPriority(Priority::Realtime);
+
+	while (true)
+	{
+		unsigned int targetTest = 0;
+		std::cout << "Select test (1=mandelbrot, 2=matrix, 3=prime, 4=string): ";
+		std::cin >> targetTest;
+		switch (targetTest)
+		{
+		case 1: mandelbrot(); break;
+		case 2: matrix(); break;
+		case 3: primes(); break;
+		case 4: string(); break;
+		default: return 0;
+		}
+	}
+}
