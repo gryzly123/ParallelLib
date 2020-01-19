@@ -106,21 +106,17 @@ void PrimeTest::DoTBB(const TestParams& In, RetryResult& Out)
 			{
 				int localSearchedIndex;
 				{
-					//const std::lock_guard<std::mutex> lock_index(searchedIndexLock);
-					searchedIndexLock.lock();
+					tbb::mutex::scoped_lock(searchedIndexLock);
 					currentSearchedIndex++;
 					localSearchedIndex = currentSearchedIndex;
-					searchedIndexLock.unlock();
 				}
 
 				if (localSearchedIndex > testConfig.searchRangeMax) break;
 
 				if (PrimeTest::IsPrime(localSearchedIndex))
 				{
-					//const std::lock_guard<std::mutex> lock_primes(primesLock);
-					primesLock.lock();
+					tbb::mutex::scoped_lock(primesLock);
 					primes.push_back(localSearchedIndex);
-					primesLock.unlock();
 				}
 			}
 		}
@@ -229,21 +225,17 @@ void PrimeTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 			{
 				int localSearchedIndex;
 				{
-					//const std::lock_guard<std::mutex> lock_index(searchedIndexLock);
-					searchedIndexLock.lock();
+					const std::lock_guard<std::mutex> lock_index(searchedIndexLock);
 					currentSearchedIndex++;
 					localSearchedIndex = currentSearchedIndex;
-					searchedIndexLock.unlock();
 				}
 
 				if (localSearchedIndex > testConfig.searchRangeMax) break;
 
 				if (IsPrime(localSearchedIndex))
 				{
-					//const std::lock_guard<std::mutex> lock_primes(primesLock);
-					primesLock.lock();
+					const std::lock_guard<std::mutex> lock_primes(primesLock);
 					primes.push_back(localSearchedIndex);
-					primesLock.unlock();
 				}
 			}
 		});
