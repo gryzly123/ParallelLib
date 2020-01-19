@@ -165,11 +165,6 @@ void StringTest::DoSequentially(const TestParams& In, RetryResult& Out)
 	Out.EndTask(true);
 }
 
-void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
-{
-	throw;
-}
-
 #ifndef __GCC__
 #include <Windows.h>
 #define ___sleep(ms) Sleep(ms)
@@ -248,9 +243,10 @@ void StringTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 						else if(bProductionCompleted)
 						{
 							bStringsLeft = false;
+							bNothingToProcess = false;
 						}
 					}
-					___sleep(1);
+					if (bNothingToProcess) ___sleep(1);
 				}
 				if (!bStringsLeft) break;
 
@@ -300,9 +296,10 @@ void StringTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 						else if (bProductionCompleted)
 						{
 							bStringsLeft = false;
+							bNothingToProcess = false;
 						}
 					}
-					___sleep(1);
+					if (bNothingToProcess) ___sleep(1);
 				}
 				if (!bStringsLeft) break;
 
@@ -353,9 +350,10 @@ void StringTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 						else if (bProductionCompleted)
 						{
 							bStringsLeft = false;
+							bNothingToProcess = false;
 						}
 					}
-					___sleep(1);
+					if (bNothingToProcess) ___sleep(1);
 				}
 				if (!bStringsLeft) break;
 
@@ -381,7 +379,6 @@ void StringTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 
 	Out.BeginResourceCleanup();
 	
-	printf("\n\n%s\n%s\n%s\n%s\n\n", ProducedStrings->string, UpperStrings->string, LowerStrings->string, AlternatedStrings->string);
 	delete ProducedStrings;
 	delete UpperStrings;
 	delete LowerStrings;
@@ -390,12 +387,419 @@ void StringTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 	Out.EndTask(true);
 }
 
+#include "tbb/parallel_invoke.h"
+#include "tbb/mutex.h"
 void StringTest::DoTBB(const TestParams& In, RetryResult& Out)
 {
-	throw;
+	Out.BeginResourceInit();
+	StringList* ProducedStrings = nullptr;
+	StringList* UpperStrings = nullptr;
+	StringList* LowerStrings = nullptr;
+	StringList* AlternatedStrings = nullptr;
+	tbb::mutex use_producer_object;
+
+	bool bProductionCompleted = false;
+
+	Out.BeginParallelWorkload();
+
+	{
+		tbb::parallel_invoke(
+		[&]() {
+			StringList* ProducedPtr = nullptr;
+			for (int i = 0; i < testConfig.numStringsToGenerate; ++i)
+			{
+				StringList* NewProduced = new StringList();
+				NewProduced->allocate_string(testConfig.stringLen);
+				GenerateRandomString(NewProduced->string, NewProduced->len);
+
+				{
+					tbb::mutex::scoped_lock(use_producer_object);
+					if (ProducedPtr != nullptr)
+					{
+						ProducedPtr->next = NewProduced;
+						ProducedPtr = ProducedPtr->next;
+					}
+					else
+					{
+						ProducedStrings = NewProduced;
+						ProducedPtr = NewProduced;
+					}
+				}
+			}
+			bProductionCompleted = true;
+		},
+		[&]() {
+			StringList* UpperPtr = nullptr;
+			StringList* LastProcessedProduced = nullptr;
+			bool bNothingToProcess = true;
+			bool bStringsLeft = true;
+			while (bStringsLeft)
+			{
+				while (bNothingToProcess && bStringsLeft)
+				{
+					{
+						tbb::mutex::scoped_lock(use_producer_object);
+						//we haven't consumed anything yet but there is something to consume
+						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
+						{
+							LastProcessedProduced = ProducedStrings;
+							bNothingToProcess = false;
+						}
+						//is there next item to consume?
+						else if (LastProcessedProduced != nullptr && LastProcessedProduced->next != nullptr)
+						{
+							LastProcessedProduced = LastProcessedProduced->next;
+							bNothingToProcess = false;
+						}
+						//no more items and producer claims it's finished
+						else if (bProductionCompleted)
+						{
+							bStringsLeft = false;
+							bNothingToProcess = false;
+						}
+					}
+					if (bNothingToProcess) ___sleep(1);
+				}
+				if (!bStringsLeft) break;
+
+				StringList* NewUpper = new StringList();
+				NewUpper->allocate_string(testConfig.stringLen);
+				memcpy(NewUpper->string, LastProcessedProduced->string, LastProcessedProduced->len);
+				StringToUpper(NewUpper->string, NewUpper->len);
+				bNothingToProcess = true;
+				if (UpperPtr != nullptr)
+				{
+					UpperPtr->next = NewUpper;
+					UpperPtr = UpperPtr->next;
+				}
+				else
+				{
+					UpperStrings = NewUpper;
+					UpperPtr = NewUpper;
+				}
+			}
+		},
+			[&]() {
+			StringList* LowerPtr = nullptr;
+			StringList* LastProcessedProduced = nullptr;
+			bool bNothingToProcess = true;
+			bool bStringsLeft = true;
+			while (bStringsLeft)
+			{
+				while (bNothingToProcess && bStringsLeft)
+				{
+					{
+						tbb::mutex::scoped_lock(use_producer_object);
+						//we haven't consumed anything yet but there is something to consume
+						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
+						{
+							LastProcessedProduced = ProducedStrings;
+							bNothingToProcess = false;
+						}
+						//is there next item to consume?
+						else if (LastProcessedProduced != nullptr && LastProcessedProduced->next != nullptr)
+						{
+							LastProcessedProduced = LastProcessedProduced->next;
+							bNothingToProcess = false;
+						}
+						//no more items and producer claims it's finished
+						else if (bProductionCompleted)
+						{
+							bStringsLeft = false;
+							bNothingToProcess = false;
+						}
+					}
+					if (bNothingToProcess) ___sleep(1);
+				}
+				if (!bStringsLeft) break;
+
+				StringList* NewLower = new StringList();
+				NewLower->allocate_string(testConfig.stringLen);
+				memcpy(NewLower->string, LastProcessedProduced->string, LastProcessedProduced->len);
+
+				StringToLower(NewLower->string, NewLower->len);
+				bNothingToProcess = true;
+				if (LowerPtr != nullptr)
+				{
+					LowerPtr->next = NewLower;
+					LowerPtr = LowerPtr->next;
+				}
+				else
+				{
+					LowerStrings = NewLower;
+					LowerPtr = NewLower;
+				}
+			}
+		},
+			[&]() {
+			StringList* AlternatedPtr = nullptr;
+			StringList* LastProcessedProduced = nullptr;
+			bool bNothingToProcess = true;
+			bool bStringsLeft = true;
+			while (bStringsLeft)
+			{
+				while (bNothingToProcess && bStringsLeft)
+				{
+					{
+						tbb::mutex::scoped_lock(use_producer_object);
+						//we haven't consumed anything yet but there is something to consume
+						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
+						{
+							LastProcessedProduced = ProducedStrings;
+							bNothingToProcess = false;
+						}
+						//is there next item to consume?
+						else if (LastProcessedProduced != nullptr && LastProcessedProduced->next != nullptr)
+						{
+							LastProcessedProduced = LastProcessedProduced->next;
+							bNothingToProcess = false;
+						}
+						//no more items and producer claims it's finished
+						else if (bProductionCompleted)
+						{
+							bStringsLeft = false;
+							bNothingToProcess = false;
+						}
+					}
+					if (bNothingToProcess) ___sleep(1);
+				}
+				if (!bStringsLeft) break;
+
+				StringList* NewAlternated = new StringList();
+				NewAlternated->allocate_string(testConfig.stringLen);
+				memcpy(NewAlternated->string, LastProcessedProduced->string, LastProcessedProduced->len);
+
+				StringAlternate(NewAlternated->string, NewAlternated->len);
+				bNothingToProcess = true;
+				if (AlternatedPtr != nullptr)
+				{
+					AlternatedPtr->next = NewAlternated;
+					AlternatedPtr = AlternatedPtr->next;
+				}
+				else
+				{
+					AlternatedStrings = NewAlternated;
+					AlternatedPtr = NewAlternated;
+				}
+			}
+		});
+	}
+	Out.BeginResourceCleanup();
+	
+	delete ProducedStrings;
+	delete UpperStrings;
+	delete LowerStrings;
+	delete AlternatedStrings;
+	
+	Out.EndTask(true);
 }
 
-void StringTest::DoDlib(const TestParams& In, RetryResult& Out)
+#include "ParallelLib/ParallelLib.h"
+void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 {
-	throw;
+	Out.BeginResourceInit();
+	StringList* ProducedStrings = nullptr;
+	StringList* UpperStrings = nullptr;
+	StringList* LowerStrings = nullptr;
+	StringList* AlternatedStrings = nullptr;
+	std::mutex use_producer_object;
+
+	bool bProductionCompleted = false;
+
+	Out.BeginParallelWorkload();
+
+	parallel_sections(stringSections, exec_master(no) nowait(no),
+		parallel_section
+		{
+			StringList* ProducedPtr = nullptr;
+			for (int i = 0; i < testConfig.numStringsToGenerate; ++i)
+			{
+				StringList* NewProduced = new StringList();
+				NewProduced->allocate_string(testConfig.stringLen);
+				GenerateRandomString(NewProduced->string, NewProduced->len);
+
+				{
+					const std::lock_guard<std::mutex> lock(use_producer_object);
+					if (ProducedPtr != nullptr)
+					{
+						ProducedPtr->next = NewProduced;
+						ProducedPtr = ProducedPtr->next;
+					}
+					else
+					{
+						ProducedStrings = NewProduced;
+						ProducedPtr = NewProduced;
+					}
+				}
+			}
+			bProductionCompleted = true;
+		},
+		parallel_section
+		{
+			StringList* UpperPtr = nullptr;
+			StringList* LastProcessedProduced = nullptr;
+			bool bNothingToProcess = true;
+			bool bStringsLeft = true;
+			while (bStringsLeft)
+			{
+				while (bNothingToProcess && bStringsLeft)
+				{
+					{
+						const std::lock_guard<std::mutex> lock(use_producer_object);
+						//we haven't consumed anything yet but there is something to consume
+						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
+						{
+							LastProcessedProduced = ProducedStrings;
+							bNothingToProcess = false;
+						}
+						//is there next item to consume?
+						else if (LastProcessedProduced != nullptr && LastProcessedProduced->next != nullptr)
+						{
+							LastProcessedProduced = LastProcessedProduced->next;
+							bNothingToProcess = false;
+						}
+						//no more items and producer claims it's finished
+						else if (bProductionCompleted)
+						{
+							bStringsLeft = false;
+							bNothingToProcess = false;
+						}
+					}
+					if (bNothingToProcess) PARALLEL_SLEEP_MILISECONDS(1);
+				}
+				if (!bStringsLeft) break;
+
+				StringList* NewUpper = new StringList();
+				NewUpper->allocate_string(testConfig.stringLen);
+				memcpy(NewUpper->string, LastProcessedProduced->string, LastProcessedProduced->len);
+				StringToUpper(NewUpper->string, NewUpper->len);
+				bNothingToProcess = true;
+				if (UpperPtr != nullptr)
+				{
+					UpperPtr->next = NewUpper;
+					UpperPtr = UpperPtr->next;
+				}
+				else
+				{
+					UpperStrings = NewUpper;
+					UpperPtr = NewUpper;
+				}
+			}
+		},
+		parallel_section
+		{
+			StringList* LowerPtr = nullptr;
+			StringList* LastProcessedProduced = nullptr;
+			bool bNothingToProcess = true;
+			bool bStringsLeft = true;
+			while (bStringsLeft)
+			{
+				while (bNothingToProcess && bStringsLeft)
+				{
+					{
+						const std::lock_guard<std::mutex> lock(use_producer_object);
+						//we haven't consumed anything yet but there is something to consume
+						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
+						{
+							LastProcessedProduced = ProducedStrings;
+							bNothingToProcess = false;
+						}
+						//is there next item to consume?
+						else if (LastProcessedProduced != nullptr && LastProcessedProduced->next != nullptr)
+						{
+							LastProcessedProduced = LastProcessedProduced->next;
+							bNothingToProcess = false;
+						}
+						//no more items and producer claims it's finished
+						else if (bProductionCompleted)
+						{
+							bStringsLeft = false;
+							bNothingToProcess = false;
+						}
+					}
+					if (bNothingToProcess) PARALLEL_SLEEP_MILISECONDS(1);
+				}
+				if (!bStringsLeft) break;
+
+				StringList* NewLower = new StringList();
+				NewLower->allocate_string(testConfig.stringLen);
+				memcpy(NewLower->string, LastProcessedProduced->string, LastProcessedProduced->len);
+
+				StringToLower(NewLower->string, NewLower->len);
+				bNothingToProcess = true;
+				if (LowerPtr != nullptr)
+				{
+					LowerPtr->next = NewLower;
+					LowerPtr = LowerPtr->next;
+				}
+				else
+				{
+					LowerStrings = NewLower;
+					LowerPtr = NewLower;
+				}
+			}
+		},
+		parallel_section
+		{
+			StringList* AlternatedPtr = nullptr;
+			StringList* LastProcessedProduced = nullptr;
+			bool bNothingToProcess = true;
+			bool bStringsLeft = true;
+			while (bStringsLeft)
+			{
+				while (bNothingToProcess && bStringsLeft)
+				{
+					{
+						const std::lock_guard<std::mutex> lock(use_producer_object);
+						//we haven't consumed anything yet but there is something to consume
+						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
+						{
+							LastProcessedProduced = ProducedStrings;
+							bNothingToProcess = false;
+						}
+						//is there next item to consume?
+						else if (LastProcessedProduced != nullptr && LastProcessedProduced->next != nullptr)
+						{
+							LastProcessedProduced = LastProcessedProduced->next;
+							bNothingToProcess = false;
+						}
+						//no more items and producer claims it's finished
+						else if (bProductionCompleted)
+						{
+							bStringsLeft = false;
+							bNothingToProcess = false;
+						}
+					}
+					if (bNothingToProcess) PARALLEL_SLEEP_MILISECONDS(1);
+				}
+				if (!bStringsLeft) break;
+
+				StringList* NewAlternated = new StringList();
+				NewAlternated->allocate_string(testConfig.stringLen);
+				memcpy(NewAlternated->string, LastProcessedProduced->string, LastProcessedProduced->len);
+
+				StringAlternate(NewAlternated->string, NewAlternated->len);
+				bNothingToProcess = true;
+				if (AlternatedPtr != nullptr)
+				{
+					AlternatedPtr->next = NewAlternated;
+					AlternatedPtr = AlternatedPtr->next;
+				}
+				else
+				{
+					AlternatedStrings = NewAlternated;
+					AlternatedPtr = NewAlternated;
+				}
+			}
+		}
+	);
+
+	Out.BeginResourceCleanup();
+	
+	delete ProducedStrings;
+	delete UpperStrings;
+	delete LowerStrings;
+	delete AlternatedStrings;
+	
+	Out.EndTask(true);
 }

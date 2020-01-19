@@ -27,6 +27,11 @@ struct StringTestConfig
 {
 	const int numStringsToGenerate = 100;
 	const int stringLen = 1024;
+	StringTestConfig() { }
+	StringTestConfig(int numStringsToGenerate, int stringLen)
+		: numStringsToGenerate(numStringsToGenerate)
+		, stringLen(stringLen)
+	{ }
 };
 
 class StringTest : public Test
@@ -48,6 +53,4 @@ protected:
 	virtual void DoParallelLib(const TestParams& In, RetryResult& Out) override;
 	virtual void DoOpenMP(const TestParams& In, RetryResult& Out) override;
 	virtual void DoTBB(const TestParams& In, RetryResult& Out) override;
-	virtual void DoDlib(const TestParams& In, RetryResult& Out) override;
 };
-
