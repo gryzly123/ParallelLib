@@ -30,7 +30,7 @@ parallel_do(parTest2, nowait(yes) num_threads(4) exec_master(yes) num_threads(6)
 	//kod zrównoleglony
 });
 
-	parallel_do(parTest1, num_threads(4) nowait(no) exec_master(yes),
+	parallel_do(parTest3, num_threads(4) nowait(no) exec_master(yes),
 		{
 			for (int i = 0; i < INT_MAX; ++i);
 			p = THREAD_ID;
