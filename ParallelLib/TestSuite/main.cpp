@@ -6,64 +6,88 @@
 #include "PrimeTest.h"
 #include "StringTest.h"
 
-int mandelbrot()
+struct ForTestVariant
 {
-	std::vector<TargetLibrary> sequentialTest    = { TargetLibrary::NoLibrary };
-	std::vector<TargetLibrary> testedLibsStatic  = { TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB, TargetLibrary::dlib };
-	std::vector<TargetLibrary> testedLibsDynamic = { TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB,                     };
-	std::vector<TargetLibrary> testedLibsGuided  = { TargetLibrary::OpenMP,                                                                          };
+	const TargetLibrary targetLibrary;
+	const ForSchedule targetSchedule;
+	const std::vector<int>& targetChunkSize;
+	const std::vector<int>& numThreads;
 
-	const int numTestRepeatitions = 1;
-	const char* testName = "Mandelbrot";
-	printf("Tested %s (num retries: %d)\n", testName, numTestRepeatitions);
-	printf("LIB\tSCHED\tNUM_THR\tCHUNK_SIZE\tSUCC\tAVG_TIME\n");
+	ForTestVariant(TargetLibrary targetLibrary, ForSchedule targetSchedule, std::vector<int>& targetChunkSize, std::vector<int>& numThreads)
+		: targetLibrary(targetLibrary), targetSchedule(targetSchedule), targetChunkSize(targetChunkSize), numThreads(numThreads) { }
+};
 
-	for (int iSched = -1; iSched < 3; ++iSched)
+#define DOUBLE_PRINT(printable) { std::cout << printable; printBuffer << printable; }
+
+int mandelbrot(const int numTestRepeatitions, const int maxNumTestedThreads, const int maxTestedChunkPower, std::ostream& printBuffer)
+{
+	//Test variants
+	// * Sequential
+	// * OpenMP Static: chunks 1-32
+	// * OpenMP Dynamic: chunks 1-32
+	// * OpenMP Guided
+	// * ParallelLib Static
+	// * ParallelLib Dynamic
+	// * TBB Static
+	// * TBB Default ("dynamic")
+	// * dlib Default ("dynamic"): chunks 1-32
+
+	std::vector<int> sequentialThreads = { 1 };
+	std::vector<int> parallelThreads;
+	for (int i = 2; i <= maxNumTestedThreads; ++i) parallelThreads.push_back(i);
+
+	std::vector<int> unsupportedChunks = { 0 };
+	std::vector<int> supportedChunks;
+	for (int i = 0; i <= maxTestedChunkPower; ++i) supportedChunks.push_back(1 << i);
+
+	std::vector<ForTestVariant> variants =
 	{
-		std::vector<TargetLibrary> testedLibs;
-		switch (iSched)
-		{
-		case -1: testedLibs = sequentialTest;    break;
-		case 0 : testedLibs = testedLibsStatic;  break;
-		case 1 : testedLibs = testedLibsDynamic; break;
-		case 2 : testedLibs = testedLibsGuided;  break;
-		}
+		ForTestVariant(TargetLibrary::NoLibrary,   ForSchedule::None,    unsupportedChunks, sequentialThreads),
+		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Static,    supportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Dynamic,   supportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Guided,  unsupportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::ParallelLib, ForSchedule::Static,  unsupportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::ParallelLib, ForSchedule::Dynamic,   supportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::IntelTBB,    ForSchedule::Static,  unsupportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::IntelTBB,    ForSchedule::Dynamic, unsupportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::dlib,        ForSchedule::Dynamic,   supportedChunks, parallelThreads)
+	};
 
-		for (int iNumThreads = 1; iNumThreads < 9; ++iNumThreads)
-		{
-			if (iSched == -1 && iNumThreads > 1) continue;
-			if (iSched != -1 && iNumThreads < 2) continue;
+	const char* testName = "Mandelbrot";
+	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
+	DOUBLE_PRINT("LIB\tSCHED\tNUM_THR\tCHUNK_SIZE\tSUCC\tAVG_TIME\n");
 
-			for (int iChunk = 0; iChunk < 6; ++iChunk)
+	std::vector<TestResult> fullResults;
+
+	for (const ForTestVariant& variant : variants)
+	{
+		for (const int& numThreads : variant.numThreads)
+		{
+			for (const int& targetChunkSize : variant.targetChunkSize)
 			{
-				if (iSched == -1 && iChunk > 0) continue;
-
-				const int actualChunkSize = (1 << iChunk);
-
 				MandelbrotTest test = MandelbrotTest(testName);
 				TestParams config(
-					false,               //const bool _bVerboseStats,
-					10,                  //const int _numTestRepeatitions,
-					true,                //const bool _bVerboseTest,
-					iNumThreads,         //const int _numThreadsToUse,
-					(ForSchedule)iSched, //const ForSchedule _forSchedule,
-					actualChunkSize,     //const int forChunkSize,
-					nullptr              //void* _userData
+					false,                   //const bool _bVerboseStats,
+					numTestRepeatitions,     //const int _numTestRepeatitions,
+					true,                    //const bool _bVerboseTest,
+					numThreads,              //const int _numThreadsToUse,
+					variant.targetSchedule,  //const ForSchedule _forSchedule,
+					targetChunkSize,         //const int forChunkSize,
+					nullptr                  //void* _userData
 				);
 
 				std::vector<TestResult> perLibraryResults;
-				test.PerformTests(testedLibs, config, perLibraryResults);
+				test.PerformTests({ variant.targetLibrary }, config, perLibraryResults);
 
-				for (const TestResult& result : perLibraryResults)
-				{
-					printf("%s\t%s\t%d\t%d\t%s\t%llu\n"
-						, LibraryToString(result.testedLibrary)
-						, ForScheduleToString((ForSchedule)(iSched >= 0 ? iSched : 255))
-						, iNumThreads
-						, actualChunkSize
-						, result.DidTestSucceed() ? "succeeded" : "failed"
-						, result.GetAverageResultTime());
-				}
+				const TestResult& result = perLibraryResults[0];
+				DOUBLE_PRINT(
+					LibraryToString(result.testedLibrary)
+					<< "\t" << ForScheduleToString(variant.targetSchedule)
+					<< "\t" << numThreads
+					<< "\t" << targetChunkSize
+					<< "\t" << (result.DidTestSucceed() ? 1 : 0)
+					<< "\t" << result.GetAverageResultTime()
+					<< "\n");
 			}
 		}
 	}
@@ -206,7 +230,12 @@ int main()
 		std::cin >> targetTest;
 		switch (targetTest)
 		{
-		case 1: mandelbrot(); break;
+		case 1: 
+		{
+			std::ofstream mandel_file("mandelbrot_result.txt");
+			mandelbrot(10, 8, 5, mandel_file); 
+		} break;
+
 		case 2: matrix(); break;
 		case 3: primes(); break;
 		case 4: string(); break;

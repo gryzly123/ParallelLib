@@ -327,11 +327,11 @@ void MandelbrotTest::DoDlib(const TestParams& In, RetryResult& Out)
 	switch (In.forSchedule)
 	{
 	case ForSchedule::Static:
-		dlib::parallel_for(dpool, 0, config.iYmax, [&](long iY) { TEST_CORE(0); }, In.forChunkSize);
+		throw; //not available
 		break;
 
 	case ForSchedule::Dynamic:
-		throw; //not available
+		dlib::parallel_for(dpool, 0, config.iYmax, [&](long iY) { TEST_CORE(0); }, In.forChunkSize);
 
 	case ForSchedule::Guided:
 		throw; //not available

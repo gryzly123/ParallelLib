@@ -5,7 +5,7 @@
 
 // ----------------------- ENUMS -----------------------
 
-const char* LibraryToString(TargetLibrary Library)
+std::string LibraryToString(TargetLibrary Library)
 {
 	switch (Library)
 	{
@@ -19,7 +19,7 @@ const char* LibraryToString(TargetLibrary Library)
 	return "";
 }
 
-const char* ForScheduleToString(ForSchedule Schedule)
+std::string ForScheduleToString(ForSchedule Schedule)
 {
 	switch (Schedule)
 	{

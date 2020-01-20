@@ -19,7 +19,7 @@ enum class ForSchedule : unsigned char
 	Guided = 2,
 	None = 255
 };
-const char* ForScheduleToString(ForSchedule Schedule); //ToString method for this enum
+std::string ForScheduleToString(ForSchedule Schedule); //ToString method for this enum
 
 //tested library
 enum class TargetLibrary : unsigned char
@@ -30,7 +30,7 @@ enum class TargetLibrary : unsigned char
 	IntelTBB = 8,
 	dlib = 16
 };
-const char* LibraryToString(TargetLibrary Library); //ToString method for this enum
+std::string LibraryToString(TargetLibrary Library); //ToString method for this enum
 
 //test phase of the currently running test instance ("retry")
 enum class TestPhase : unsigned char
