@@ -144,7 +144,7 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 
 		if (inParams.bVerboseStats)
 		{
-			printf("Testing library %s:\n", LibraryToString(lib));
+			std::cout << "Testing library: " << LibraryToString(lib) << "\n";
 		}
 
 		//Create the TestResult object for the current library.
