@@ -2,7 +2,7 @@
 #include "Test.h"
 #include <string>
 
-struct MandelbrotConfig
+struct MandelbrotTestConfig
 {
 	//screen size
 	const int iXmax = 2000;
@@ -17,16 +17,19 @@ struct MandelbrotConfig
 	const double EscapeRadius = 2.0f;
 
 	const int IterationMax = 200;
+	const bool bExportImages = false;
+
+	MandelbrotTestConfig(bool bExportImages) : bExportImages(bExportImages) { }
 };
 
 class MandelbrotTest : public Test
 {
 public:
-	MandelbrotTest(const std::string& inName);
+	MandelbrotTest(const std::string& inName, MandelbrotTestConfig& testConfig);
 	~MandelbrotTest();
 
 protected:
-	MandelbrotConfig config;
+	MandelbrotTestConfig testConfig;
 
 	virtual void DoSequentially(const TestParams& In, RetryResult& Out) override;
 	virtual void DoParallelLib(const TestParams& In, RetryResult& Out) override;
