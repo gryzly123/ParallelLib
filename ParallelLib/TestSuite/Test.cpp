@@ -166,15 +166,20 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 			switch (lib)
 			{
 			case TargetLibrary::NoLibrary:
+				if (inParams.numThreadsToUse != 1) throw; //invalid thread num
 				DoSequentially(inParams, retryResult);
 				break;
 			case TargetLibrary::OpenMP:
+				if (inParams.numThreadsToUse < 2) throw; //invalid thread num
 				DoOpenMP(inParams, retryResult);
 				break;
 			case TargetLibrary::ParallelLib:
+				if (inParams.numThreadsToUse < 2) throw; //invalid thread num
 				DoParallelLib(inParams, retryResult);
 				break;
 			case TargetLibrary::IntelTBB:
+
+				if (inParams.numThreadsToUse < 2) throw; //invalid thread num
 
 				//in IntelTBB's case we manually reset the task scheduling before starting the task.
 				//this ensures that the required threads are preallocated and there are as many
@@ -185,6 +190,7 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 				}
 				break;
 			case TargetLibrary::dlib:
+				if (inParams.numThreadsToUse < 2) throw; //invalid thread num
 				DoDlib(inParams, retryResult);
 				break;
 			default:
