@@ -418,7 +418,7 @@ void StringTest::DoTBB(const TestParams& In, RetryResult& Out)
 				GenerateRandomString(NewProduced->string, NewProduced->len);
 
 				{
-					tbb::mutex::scoped_lock(use_producer_object);
+					tbb::mutex::scoped_lock lock(use_producer_object);
 					if (ProducedPtr != nullptr)
 					{
 						ProducedPtr->next = NewProduced;
@@ -443,7 +443,7 @@ void StringTest::DoTBB(const TestParams& In, RetryResult& Out)
 				while (bNothingToProcess && bStringsLeft)
 				{
 					{
-						tbb::mutex::scoped_lock(use_producer_object);
+						tbb::mutex::scoped_lock lock(use_producer_object);
 						//we haven't consumed anything yet but there is something to consume
 						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
 						{
@@ -494,7 +494,7 @@ void StringTest::DoTBB(const TestParams& In, RetryResult& Out)
 				while (bNothingToProcess && bStringsLeft)
 				{
 					{
-						tbb::mutex::scoped_lock(use_producer_object);
+						tbb::mutex::scoped_lock lock(use_producer_object);
 						//we haven't consumed anything yet but there is something to consume
 						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
 						{
@@ -546,7 +546,7 @@ void StringTest::DoTBB(const TestParams& In, RetryResult& Out)
 				while (bNothingToProcess && bStringsLeft)
 				{
 					{
-						tbb::mutex::scoped_lock(use_producer_object);
+						tbb::mutex::scoped_lock lock(use_producer_object);
 						//we haven't consumed anything yet but there is something to consume
 						if (LastProcessedProduced == nullptr && ProducedStrings != nullptr)
 						{

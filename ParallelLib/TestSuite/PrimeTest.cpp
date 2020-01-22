@@ -99,14 +99,14 @@ void PrimeTest::DoTBB(const TestParams& In, RetryResult& Out)
 
 	tbb::parallel_do(
 		tbb::counting_iterator<int>(0),
-		tbb::counting_iterator<int>(In.numThreadsToUse),
+		tbb::counting_iterator<int>(In.numThreadsToUse - 1),
 		[&](int thread_id, tbb::parallel_do_feeder<int>& feeder)
 		{
 			while (true)
 			{
 				int localSearchedIndex;
 				{
-					tbb::mutex::scoped_lock(searchedIndexLock);
+					tbb::mutex::scoped_lock lock(searchedIndexLock);
 					currentSearchedIndex++;
 					localSearchedIndex = currentSearchedIndex;
 				}
@@ -115,7 +115,7 @@ void PrimeTest::DoTBB(const TestParams& In, RetryResult& Out)
 
 				if (PrimeTest::IsPrime(localSearchedIndex))
 				{
-					tbb::mutex::scoped_lock(primesLock);
+					tbb::mutex::scoped_lock lock(primesLock);
 					primes.push_back(localSearchedIndex);
 				}
 			}
