@@ -10,18 +10,16 @@ struct ForTestVariant
 {
 	const TargetLibrary targetLibrary;
 	const ForSchedule targetSchedule;
-	const std::vector<int>& targetChunkSize;
-	const std::vector<int>& numThreads;
+	const std::vector<int> targetChunkSize;
+	const std::vector<int> numThreads;
 
 	ForTestVariant(TargetLibrary targetLibrary, ForSchedule targetSchedule, std::vector<int>& targetChunkSize, std::vector<int>& numThreads)
 		: targetLibrary(targetLibrary), targetSchedule(targetSchedule), targetChunkSize(targetChunkSize), numThreads(numThreads) { }
 };
 
-#define DOUBLE_PRINT(printable) { std::cout << printable; printBuffer << printable; }
-
-int mandelbrot(const int numTestRepeatitions, const int maxNumTestedThreads, const int maxTestedChunkPower, std::ostream& printBuffer)
+std::vector<ForTestVariant> BuildForVariants(const int maxNumTestedThreads, const int maxTestedChunkPower)
 {
-	//Test variants
+	//Possible test variants
 	// * Sequential
 	// * OpenMP Static: chunks 1-32
 	// * OpenMP Dynamic: chunks 1-32
@@ -40,8 +38,7 @@ int mandelbrot(const int numTestRepeatitions, const int maxNumTestedThreads, con
 	std::vector<int> supportedChunks;
 	for (int i = 0; i <= maxTestedChunkPower; ++i) supportedChunks.push_back(1 << i);
 
-	std::vector<ForTestVariant> variants =
-	{
+	return {
 		ForTestVariant(TargetLibrary::NoLibrary,   ForSchedule::None,    unsupportedChunks, sequentialThreads),
 		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Static,    supportedChunks, parallelThreads),
 		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Dynamic,   supportedChunks, parallelThreads),
@@ -52,12 +49,35 @@ int mandelbrot(const int numTestRepeatitions, const int maxNumTestedThreads, con
 		ForTestVariant(TargetLibrary::IntelTBB,    ForSchedule::Dynamic, unsupportedChunks, parallelThreads),
 		ForTestVariant(TargetLibrary::dlib,        ForSchedule::Dynamic,   supportedChunks, parallelThreads)
 	};
+}
 
+std::vector<ForTestVariant> BuildDoVariants(const int maxNumTestedThreads)
+{
+	//Possible test variants are simply library types
+
+	std::vector<int> sequentialThreads = { 1 };
+	std::vector<int> parallelThreads;
+	for (int i = 2; i <= maxNumTestedThreads; ++i) parallelThreads.push_back(i);
+
+	std::vector<int> unsupportedChunks = { 0 };
+
+	return {
+		ForTestVariant(TargetLibrary::NoLibrary,   ForSchedule::None, unsupportedChunks, sequentialThreads),
+		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::None, unsupportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::ParallelLib, ForSchedule::None, unsupportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::IntelTBB,    ForSchedule::None, unsupportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::dlib,        ForSchedule::None, unsupportedChunks, parallelThreads)
+	};
+}
+
+
+#define DOUBLE_PRINT(printable) { std::cout << printable; printBuffer << printable; }
+
+void mandelbrot(const std::vector<ForTestVariant>& variants, const int numTestRepeatitions, const bool bExportImages, std::ostream& printBuffer)
+{
 	const char* testName = "Mandelbrot";
 	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
-	DOUBLE_PRINT("LIB\tSCHED\tNUM_THR\tCHUNK_SIZE\tSUCC\tAVG_TIME\n");
-
-	std::vector<TestResult> fullResults;
+	DOUBLE_PRINT("LIB      \tSCHED\tNUM_THR\tCHUNK_S\tSUCC\tAVG_TIME\n");
 
 	for (const ForTestVariant& variant : variants)
 	{
@@ -65,11 +85,12 @@ int mandelbrot(const int numTestRepeatitions, const int maxNumTestedThreads, con
 		{
 			for (const int& targetChunkSize : variant.targetChunkSize)
 			{
-				MandelbrotTest test = MandelbrotTest(testName);
+				MandelbrotTestConfig testConfig(bExportImages);
+				MandelbrotTest test = MandelbrotTest(testName, testConfig);
 				TestParams config(
 					false,                   //const bool _bVerboseStats,
 					numTestRepeatitions,     //const int _numTestRepeatitions,
-					true,                    //const bool _bVerboseTest,
+					false,                   //const bool _bVerboseTest,
 					numThreads,              //const int _numThreadsToUse,
 					variant.targetSchedule,  //const ForSchedule _forSchedule,
 					targetChunkSize,         //const int forChunkSize,
@@ -78,7 +99,6 @@ int mandelbrot(const int numTestRepeatitions, const int maxNumTestedThreads, con
 
 				std::vector<TestResult> perLibraryResults;
 				test.PerformTests({ variant.targetLibrary }, config, perLibraryResults);
-
 				const TestResult& result = perLibraryResults[0];
 				DOUBLE_PRINT(
 					LibraryToString(result.testedLibrary)
@@ -91,155 +111,180 @@ int mandelbrot(const int numTestRepeatitions, const int maxNumTestedThreads, con
 			}
 		}
 	}
-
-	return 0;
 }
 
-int matrix()
+void matrix(const std::vector<ForTestVariant>& variants, const int numTestRepeatitions, const bool bTransposeMatrix, const bool bDoubleForNesting, std::ostream& printBuffer)
 {
-	std::vector<TargetLibrary> sequentialTest = { TargetLibrary::NoLibrary, TargetLibrary::ParallelLib, TargetLibrary::OpenMP, TargetLibrary::IntelTBB, TargetLibrary::dlib };
-
-	const int numTestRepeatitions = 1;
 	const char* testName = "MatrixMul";
-	printf("Tested %s (num retries: %d)\n", testName, numTestRepeatitions);
-	printf("LIB\tSCHED\tNUM_THR\tCHUNK_SIZE\tSUCC\tAVG_TIME\n");
+	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
+	DOUBLE_PRINT("LIB      \tSCHED\tNUM_THR\tCHUNK_S\tSUCC\tAVG_TIME\n");
 
-	for (int i = 0; i < 2; ++i)
+	for (const ForTestVariant& variant : variants)
 	{
-		MatrixTestConfig matrixConfig = MatrixTestConfig((i == 1), false);
-		MatrixTest test = MatrixTest(testName, matrixConfig);
-		TestParams config(
-			false,               //const bool _bVerboseStats,
-			10,                  //const int _numTestRepeatitions,
-			true,                //const bool _bVerboseTest,
-			4,                   //const int _numThreadsToUse,
-			ForSchedule::Static, //const ForSchedule _forSchedule,
-			10,                  //const int forChunkSize,
-			nullptr              //void* _userData
-		);
-
-		std::vector<TestResult> perLibraryResults;
-		test.PerformTests(sequentialTest, config, perLibraryResults);
-
-		for (const TestResult& result : perLibraryResults)
+		for (const int& numThreads : variant.numThreads)
 		{
-			printf("%s\t%s\t%d\t%d\t%s\t%llu\n"
-				, LibraryToString(result.testedLibrary)
-				, ForScheduleToString(ForSchedule::None)
-				, 1
-				, 1
-				, result.DidTestSucceed() ? "succeeded" : "failed"
-				, result.GetAverageResultTime());
+			for (const int& targetChunkSize : variant.targetChunkSize)
+			{
+				MatrixTestConfig matrixConfig = MatrixTestConfig(bTransposeMatrix, bDoubleForNesting);
+				MatrixTest test = MatrixTest(testName, matrixConfig);
+				TestParams config(
+					false,                   //const bool _bVerboseStats,
+					numTestRepeatitions,     //const int _numTestRepeatitions,
+					false,                   //const bool _bVerboseTest,
+					numThreads,              //const int _numThreadsToUse,
+					variant.targetSchedule,  //const ForSchedule _forSchedule,
+					targetChunkSize,         //const int forChunkSize,
+					nullptr                  //void* _userData
+				);
+
+				std::vector<TestResult> perLibraryResults;
+				test.PerformTests({ variant.targetLibrary }, config, perLibraryResults);
+				const TestResult& result = perLibraryResults[0];
+				DOUBLE_PRINT(
+					LibraryToString(result.testedLibrary)
+					<< "\t" << ForScheduleToString(variant.targetSchedule)
+					<< "\t" << numThreads
+					<< "\t" << targetChunkSize
+					<< "\t" << (result.DidTestSucceed() ? 1 : 0)
+					<< "\t" << result.GetAverageResultTime()
+					<< "\n");
+			}
 		}
 	}
-
-	return 0;
 }
 
-int primes()
+void primes(const std::vector<TargetLibrary>& testedLibraries, const int maxNumThreads, const int numTestRepeatitions, const int searchRangeMin, const int searchRangeMax, std::ostream& printBuffer)
 {
-	PrioritySetter::SetPriority(Priority::Realtime);
+	const char* testName = "Primes";
+	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
+	DOUBLE_PRINT("LIB      \tNUM_THR\tSUCC\tAVG_TIME\n");
 
-	std::vector<TargetLibrary> tests1 = { TargetLibrary::NoLibrary };
-	std::vector<TargetLibrary> testsm = { TargetLibrary::ParallelLib, TargetLibrary::OpenMP, TargetLibrary::IntelTBB, TargetLibrary::dlib };
-
-	const int numTestRepeatitions = 5;
-	const char* testName = "PrimeTest";
-	printf("Tested %s (num retries: %d)\n", testName, numTestRepeatitions);
-	printf("LIB\tSCHED\tNUM_THR\tCHUNK_SIZE\tSUCC\tAVG_TIME\n");
-
-	for (int i = 1; i < 9; ++i)
+	for (const TargetLibrary& targetLibrary : testedLibraries)
 	{
-		PrimeTestConfig primeConfig = PrimeTestConfig();
-		PrimeTest test = PrimeTest(testName, primeConfig);
+		for (int numThreads = 1; numThreads <= maxNumThreads; ++numThreads)
+		{
+			if (numThreads == 1 && targetLibrary != TargetLibrary::NoLibrary) continue;
+			if (numThreads != 1 && targetLibrary == TargetLibrary::NoLibrary) continue;
+
+			PrimeTestConfig primeConfig = PrimeTestConfig(searchRangeMin, searchRangeMax);
+			PrimeTest test = PrimeTest(testName, primeConfig);
+			TestParams config(
+				false,               //const bool _bVerboseStats,
+				numTestRepeatitions, //const int _numTestRepeatitions,
+				true,                //const bool _bVerboseTest,
+				numThreads,          //const int _numThreadsToUse,
+				ForSchedule::None,   //const ForSchedule _forSchedule,
+				0,                   //const int forChunkSize,
+				nullptr              //void* _userData
+			);
+
+			std::vector<TestResult> perLibraryResults;
+			test.PerformTests({ targetLibrary }, config, perLibraryResults);
+			const TestResult& result = perLibraryResults[0];
+			DOUBLE_PRINT(
+				LibraryToString(result.testedLibrary)
+				<< "\t" << numThreads
+				<< "\t" << (result.DidTestSucceed() ? 1 : 0)
+				<< "\t" << result.GetAverageResultTime()
+				<< "\n");
+		}
+	}
+}
+
+void string(const std::vector<TargetLibrary>& testedLibraries, const int numTestRepeatitions, const int numStrings, const int stringLengths, std::ostream& printBuffer)
+{
+	const char* testName = "Strings";
+	printf("Tested %s (num retries: %d)\n", testName, numTestRepeatitions);
+	printf("LIB      \tSUCC\tAVG_TIME\n");
+
+	for (const TargetLibrary& targetLibrary : testedLibraries)
+	{
+		StringTestConfig primeConfig = StringTestConfig(numStrings, stringLengths);
+		const int numThreads = (targetLibrary == TargetLibrary::NoLibrary) ? 1 : 4;
+		StringTest test = StringTest(testName, primeConfig);
 		TestParams config(
 			false,               //const bool _bVerboseStats,
 			numTestRepeatitions, //const int _numTestRepeatitions,
 			true,                //const bool _bVerboseTest,
-			i,                   //const int _numThreadsToUse,
-			ForSchedule::Static, //const ForSchedule _forSchedule,
-			10,                  //const int forChunkSize,
+			numThreads,          //const int _numThreadsToUse,
+			ForSchedule::None,   //const ForSchedule _forSchedule,
+			0,                   //const int forChunkSize,
 			nullptr              //void* _userData
 		);
 
 		std::vector<TestResult> perLibraryResults;
-		test.PerformTests(i == 1 ? tests1 : testsm, config, perLibraryResults);
-
-		for (const TestResult& result : perLibraryResults)
-		{
-			printf("%s\t%s\t%d\t%d\t%s\t%llu\n"
-				, LibraryToString(result.testedLibrary)
-				, ForScheduleToString(ForSchedule::None)
-				, i
-				, 0
-				, result.DidTestSucceed() ? "succeeded" : "failed"
-				, result.GetAverageResultTime());
-		}
+		test.PerformTests({ targetLibrary }, config, perLibraryResults);
+		const TestResult& result = perLibraryResults[0];
+		DOUBLE_PRINT(
+			LibraryToString(result.testedLibrary)
+			<< "\t" << (result.DidTestSucceed() ? 1 : 0)
+			<< "\t" << result.GetAverageResultTime()
+			<< "\n");
 	}
-
-	return 0;
 }
 
-int string()
-{
-	std::vector<TargetLibrary> tests = { TargetLibrary::NoLibrary, TargetLibrary::ParallelLib, TargetLibrary::OpenMP, TargetLibrary::IntelTBB };
-
-	const int numTestRepeatitions = 25;
-	const char* testName = "PrimeTest";
-	printf("Tested %s (num retries: %d)\n", testName, numTestRepeatitions);
-	printf("LIB\tSCHED\tNUM_THR\tCHUNK_SIZE\tSUCC\tAVG_TIME\n");
-
-	StringTestConfig primeConfig = StringTestConfig(5000, 10000);
-	StringTest test = StringTest(testName, primeConfig);
-	TestParams config(
-		false,               //const bool _bVerboseStats,
-		numTestRepeatitions, //const int _numTestRepeatitions,
-		true,                //const bool _bVerboseTest,
-		4,                   //const int _numThreadsToUse,
-		ForSchedule::Static, //const ForSchedule _forSchedule,
-		10,                  //const int forChunkSize,
-		nullptr              //void* _userData
-	);
-
-	std::vector<TestResult> perLibraryResults;
-	test.PerformTests(tests, config, perLibraryResults);
-
-	for (const TestResult& result : perLibraryResults)
-	{
-		printf("%s\t%s\t%d\t%d\t%s\t%llu\n"
-			, LibraryToString(result.testedLibrary)
-			, ForScheduleToString(ForSchedule::None)
-			, 4
-			, 0
-			, result.DidTestSucceed() ? "succeeded" : "failed"
-			, result.GetAverageResultTime());
-	}
-	
-
-	return 0;
-}
+#define TimeStamp std::chrono::steady_clock::time_point
+#define TimeNow std::chrono::steady_clock::now
+#define TimeSpan unsigned long long
 
 int main()
 {
 	PrioritySetter::SetPriority(Priority::Realtime);
 
-	while (true)
-	{
-		unsigned int targetTest = 0;
-		std::cout << "Select test (1=mandelbrot, 2=matrix, 3=prime, 4=string): ";
-		std::cin >> targetTest;
-		switch (targetTest)
-		{
-		case 1: 
-		{
-			std::ofstream mandel_file("mandelbrot_result.txt");
-			mandelbrot(10, 8, 5, mandel_file); 
-		} break;
+	TimeStamp app_launched = TimeNow();
 
-		case 2: matrix(); break;
-		case 3: primes(); break;
-		case 4: string(); break;
-		default: return 0;
-		}
-	}
+	const int globalNumRepeatitions = 1;
+	const int globalMaxNumThreads = 8;
+	std::vector<ForTestVariant> forVariants = BuildForVariants(globalMaxNumThreads, 5); //test up to 8 threads, up to 32 chunks
+	std::vector<TargetLibrary> doLibraries = { TargetLibrary::NoLibrary, TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB, TargetLibrary::dlib };
+	std::vector<TargetLibrary> sectionsLibraries = { TargetLibrary::NoLibrary, TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB };
+
+	std::ofstream mandel_file("mandelbrot_result.txt");
+	mandelbrot(forVariants, globalNumRepeatitions, false /* don't export images */, mandel_file);
+	
+	std::ofstream matrix_file1("matrix_result.txt");
+	std::ofstream matrix_file2("matrix_result_transposed.txt");
+	std::ofstream matrix_file3("matrix_result_nested.txt");
+	std::ofstream matrix_file4("matrix_result_nested_transposed.txt");
+	matrix(forVariants, globalNumRepeatitions, false, false, matrix_file1);
+	matrix(forVariants, globalNumRepeatitions, true,  false, matrix_file2);
+	matrix(forVariants, globalNumRepeatitions, false, true,  matrix_file3);
+	matrix(forVariants, globalNumRepeatitions, true,  true,  matrix_file4);
+
+	std::ofstream primes5000_file("primes_result_5000.txt");
+	std::ofstream primes50000_file("primes_result_50000.txt");
+	primes(doLibraries, globalMaxNumThreads, globalNumRepeatitions, 2, 5000, primes5000_file);
+	primes(doLibraries, globalMaxNumThreads, globalNumRepeatitions, 2, 50000, primes50000_file);
+
+	std::ofstream string_file1("primes_result_10000strX2000ch.txt");
+	std::ofstream string_file2("primes_result_2000strX10000ch.txt");
+	string(sectionsLibraries, globalNumRepeatitions, 10000, 2000, string_file1);
+	string(sectionsLibraries, globalNumRepeatitions, 2000, 10000, string_file2);
+
+	//while (true)
+	//{
+	//	unsigned int targetTest = 0;
+	//	std::cout << "Select test (1=mandelbrot, 2=matrix, 3=prime, 4=string): ";
+	//	std::cin >> targetTest;
+	//	switch (targetTest)
+	//	{
+	//	case 1: 
+	//	{
+	//		std::ofstream mandel_file("mandelbrot_result.txt");
+	//		mandelbrot(GenerateForVariants(), 10, 8, 5, mandel_file); 
+	//	} break;
+	//
+	//	case 2: matrix(); break;
+	//	case 3: primes(); break;
+	//	case 4: string(); break;
+	//	default: return 0;
+	//	}
+	//}
+
+	TimeStamp app_finished = TimeNow();
+	TimeSpan total = std::chrono::duration_cast<std::chrono::seconds>(app_finished - app_launched).count();
+
+	std::cout << "\nall tests done in " << total << "s.\n";
+	getchar();
+	return 0;
 }
