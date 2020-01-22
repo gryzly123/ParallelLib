@@ -15,7 +15,22 @@ int main()
 	create_public(int, s, 10);
 	create_private(int, p);
 
-	parallel_do(parTest1, num_threads(4) nowait(no) exec_master(yes),
+pDo parTest1; parTest1
+	.NoWait(true)
+	.NumThreads(4)
+	.ExecuteOnMaster(true)
+	.NumThreads(6)
+	.Do([&](pExecParams params)
+{
+	//kod zrównoleglony
+});
+
+parallel_do(parTest2, nowait(yes) num_threads(4) exec_master(yes) num_threads(6),
+{
+	//kod zrównoleglony
+});
+
+	parallel_do(parTest3, num_threads(4) nowait(no) exec_master(yes),
 		{
 			for (int i = 0; i < INT_MAX; ++i);
 			p = THREAD_ID;

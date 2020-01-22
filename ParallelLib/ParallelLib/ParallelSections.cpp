@@ -3,19 +3,7 @@
 
 pSections::pSections() { }
 
-pSections::~pSections() { if (bNoWait.Get()) CleanupThreads(); }
-
-void pSections::CleanupThreads()
-{
-	if (actualNumThreads == 0) return;
-
-	for (int i = 0; i < actualNumThreads; ++i)
-	{
-		threads[i]->join();
-		delete threads[i];
-	}
-	delete[] threads;
-}
+pSections::~pSections() { }
 
 pSections& pSections::NoWait(bool _NoWait)
 {
@@ -41,8 +29,8 @@ void pSections::Do(std::vector<std::function<void(const pExecParams)>> Funcs)
 
 	//execution
 	for (int i = 0; i < actualNumThreads; ++i)
-		threads[i] = new std::thread(Funcs[i], pExecParams(this, i));
-	if (bExecuteOnMaster.Get()) Funcs[actualNumThreads](pExecParams(this, MASTER_TASK));
+		threads[i] = new std::thread(Funcs[i], pExecParams(this, i, Funcs.size()));
+	if (bExecuteOnMaster.Get()) Funcs[actualNumThreads](pExecParams(this, MASTER_TASK, Funcs.size()));
 
 	//join
 	if (!bNoWait.Get())

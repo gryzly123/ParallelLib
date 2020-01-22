@@ -19,7 +19,7 @@ enum class ForSchedule : unsigned char
 	Guided = 2,
 	None = 255
 };
-const char* ForScheduleToString(ForSchedule Schedule); //ToString method for this enum
+std::string ForScheduleToString(ForSchedule Schedule); //ToString method for this enum
 
 //tested library
 enum class TargetLibrary : unsigned char
@@ -30,7 +30,7 @@ enum class TargetLibrary : unsigned char
 	IntelTBB = 8,
 	dlib = 16
 };
-const char* LibraryToString(TargetLibrary Library); //ToString method for this enum
+std::string LibraryToString(TargetLibrary Library); //ToString method for this enum
 
 //test phase of the currently running test instance ("retry")
 enum class TestPhase : unsigned char
@@ -49,8 +49,8 @@ enum class TestType : unsigned char
 	None = 0,
 	MatrixMultiplication = 1,
 	Mandelbrot = 2,
-	ImageFilters = 3,
-	Sierpinski = 4
+	PrimeNumbers = 3,
+	StringTest = 4
 };
 
 // ----------------------- STRUCTS -----------------------
@@ -129,7 +129,6 @@ private:
 	virtual void DoSequentially(const TestParams& In, RetryResult& Out);
 	virtual void DoParallelLib(const TestParams& In, RetryResult& Out);
 	virtual void DoOpenMP(const TestParams& In, RetryResult& Out);
-	virtual void DoBoost(const TestParams& In, RetryResult& Out);
 	virtual void DoTBB(const TestParams& In, RetryResult& Out);
 	virtual void DoDlib(const TestParams& In, RetryResult& Out);
 
@@ -148,3 +147,8 @@ protected:
 	inline const int& GetTestNum() const  { return testNum; }
 	inline const TargetLibrary& GetRunningLibrary() const  { return runningLibrary; }
 };
+
+#ifndef IN_TEST_CPP
+	#undef TimeStamp
+	#undef TimeSpan
+#endif

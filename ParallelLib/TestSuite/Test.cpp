@@ -1,26 +1,25 @@
 #include "stdafx.h"
+#define IN_TEST_CPP 1
 #include "Test.h"
 #include "tbb/task_scheduler_init.h"
 
 // ----------------------- ENUMS -----------------------
 
-const char* LibraryToString(TargetLibrary Library)
+std::string LibraryToString(TargetLibrary Library)
 {
 	switch (Library)
 	{
-	case TargetLibrary::NoLibrary:   return "Sequential";
-	case TargetLibrary::OpenMP:      return "OpenMP";
+	case TargetLibrary::NoLibrary:   return "Sequential ";
+	case TargetLibrary::OpenMP:      return "OpenMP     ";
 	case TargetLibrary::ParallelLib: return "ParallelLib";
-	case TargetLibrary::IntelTBB:    return "IntelTBB";
-	case TargetLibrary::dlib:        return "dlib";
-	//case TargetLibrary::Boost:       return "Boost";
-	//case TargetLibrary::MicrosoftPPL:       return "Microsoft PPL";
+	case TargetLibrary::IntelTBB:    return "IntelTBB   ";
+	case TargetLibrary::dlib:        return "dlib       ";
 	}
 	throw; //unsupported library
 	return "";
 }
 
-const char* ForScheduleToString(ForSchedule Schedule)
+std::string ForScheduleToString(ForSchedule Schedule)
 {
 	switch (Schedule)
 	{
@@ -167,15 +166,20 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 			switch (lib)
 			{
 			case TargetLibrary::NoLibrary:
+				if (inParams.numThreadsToUse != 1) throw; //invalid thread num
 				DoSequentially(inParams, retryResult);
 				break;
 			case TargetLibrary::OpenMP:
+				if (inParams.numThreadsToUse < 2) throw; //invalid thread num
 				DoOpenMP(inParams, retryResult);
 				break;
 			case TargetLibrary::ParallelLib:
+				if (inParams.numThreadsToUse < 2) throw; //invalid thread num
 				DoParallelLib(inParams, retryResult);
 				break;
 			case TargetLibrary::IntelTBB:
+
+				if (inParams.numThreadsToUse < 2) throw; //invalid thread num
 
 				//in IntelTBB's case we manually reset the task scheduling before starting the task.
 				//this ensures that the required threads are preallocated and there are as many
@@ -186,12 +190,9 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 				}
 				break;
 			case TargetLibrary::dlib:
+				if (inParams.numThreadsToUse < 2) throw; //invalid thread num
 				DoDlib(inParams, retryResult);
 				break;
-
-			//case TargetLibrary::Boost:
-			//	DoBoost(inParams, retryResult);
-			//	break;
 			default:
 				throw; //unsupported library
 			}
@@ -229,11 +230,6 @@ void Test::DoParallelLib(const TestParams& In, RetryResult& Out)
 }
 
 void Test::DoOpenMP(const TestParams& In, RetryResult& Out)
-{
-	throw; //base class cannot be tested
-}
-
-void Test::DoBoost(const TestParams& In, RetryResult& Out)
 {
 	throw; //base class cannot be tested
 }

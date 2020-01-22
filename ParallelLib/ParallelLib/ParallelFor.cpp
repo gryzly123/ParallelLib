@@ -55,8 +55,8 @@ pForChunkDispenserDynamic::pForChunkDispenserDynamic(const int& Init, const int&
 	: pForChunkDispenser(Init, Target, Increment)
 {
 	itersPerChunk = NumIters;
-	int totalNumIters = std::floor(static_cast<double>(Target - Init) / static_cast<double>(Increment));
-	numDynamicChunks = std::floor(static_cast<double>(totalNumIters) / static_cast<double>(NumIters));
+	int totalNumIters = (int)std::floor(static_cast<double>(Target - Init) / static_cast<double>(Increment));
+	numDynamicChunks = (int)std::floor(static_cast<double>(totalNumIters) / static_cast<double>(NumIters));
 }
 
 bool pForChunkDispenserDynamic::GetNextChunk(pForChunk& NextChunk)
@@ -108,7 +108,7 @@ void pForChunk::Do(const pExecParams& Params, ForFunc& Func)
 }
 
 pFor::pFor() { }
-pFor::~pFor() { if (bNoWait.Get()) CleanupThreads(); }
+pFor::~pFor() { }
 
 pFor& pFor::NumThreads(int _NumThreads)
 {
@@ -173,9 +173,9 @@ void pFor::Do(const int Init, const int Target, const int Increment, ForFunc Fun
 	//execution
 	for (int i = 0; i < actualNumThreads; ++i)
 	{
-		threads[i] = new std::thread(pFor::BeginExecuteChunks, pExecParams(this, i), Function);
+		threads[i] = new std::thread(pFor::BeginExecuteChunks, pExecParams(this, i, numThreads.Get()), Function);
 	}
-	if (bExecuteOnMaster.Get()) BeginExecuteChunks(pExecParams(this, MASTER_TASK), Function);
+	if (bExecuteOnMaster.Get()) BeginExecuteChunks(pExecParams(this, MASTER_TASK, numThreads.Get()), Function);
 
 	//join
 	if (!bNoWait.Get())
@@ -195,14 +195,4 @@ void pFor::BeginExecuteChunks(pExecParams Params, ForFunc Func)
 		currentChunk.Do(Params, Func);
 		if (bIsStatic) return; //ensure that one thread doesn't get two static chunks
 	}
-}
-
-void pFor::CleanupThreads()
-{
-	for (int i = 0; i < actualNumThreads; ++i)
-	{
-		threads[i]->join();
-		delete threads[i];
-	}
-	delete[] threads;
 }

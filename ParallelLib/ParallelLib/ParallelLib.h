@@ -16,9 +16,9 @@
 	#include "SetOnce.h"
 	#include "ExecParams.h"
 	#include "Singleton.h"
-	#include "Schedule.h"
 
 //main parallel structures
+	#include "ParallelBase.h"
 	#include "ParallelDo.h"
 	#include "ParallelFor.h"
 	#include "ParallelSections.h"
@@ -78,7 +78,8 @@
 
 //variables available in parallel blocks
 
-	#define THREAD_ID ___pExecParams.ThreadId
+	#define THREAD_ID    ___pExecParams.ThreadId
+	#define THREAD_COUNT ___pExecParams.NumThreads
 
 //functions available in parallel blocks
 

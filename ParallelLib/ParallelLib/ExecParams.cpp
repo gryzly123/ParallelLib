@@ -2,9 +2,10 @@
 #include <chrono>
 #include <thread>
 
-pExecParams::pExecParams(const void* _ParentTask, const int _ThreadId)
+pExecParams::pExecParams(const void* _ParentTask, const int _ThreadId, const int _NumThreads)
 	: ParentTask(_ParentTask)
 	, ThreadId(_ThreadId)
+	, NumThreads(_NumThreads)
 {
 
 }

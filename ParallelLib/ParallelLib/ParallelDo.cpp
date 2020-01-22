@@ -3,7 +3,7 @@
 #include <thread>
 
 pDo::pDo() { }
-pDo::~pDo() { if (bNoWait.Get()) CleanupThreads(); }
+pDo::~pDo() { }
 
 pDo& pDo::NumThreads(int _NumThreads)
 {
@@ -36,22 +36,12 @@ void pDo::Do(std::function<void(const pExecParams)> Func)
 
 	//execution
 	for (int i = 0; i < actualNumThreads; ++i)
-		threads[i] = new std::thread(Func, pExecParams(this, i));
-	if (bExecuteOnMaster.Get()) Func(pExecParams(this, MASTER_TASK));
+		threads[i] = new std::thread(Func, pExecParams(this, i, numThreads.Get()));
+	if (bExecuteOnMaster.Get()) Func(pExecParams(this, MASTER_TASK, numThreads.Get()));
 
 	//join
 	if (!bNoWait.Get())
 	{
 		CleanupThreads();
 	}
-}
-
-void pDo::CleanupThreads()
-{
-	for (int i = 0; i < actualNumThreads; ++i)
-	{
-		threads[i]->join();
-		delete threads[i];
-	}
-	delete[] threads;
 }
