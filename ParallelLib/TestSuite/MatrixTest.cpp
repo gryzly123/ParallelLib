@@ -44,7 +44,6 @@ void MatrixTest::DoSequentially(const TestParams& In, RetryResult& Out)
 	Result->Clear();
 
 	Out.BeginParallelWorkload();
-	int lmao = 0;
 	if (!testConfig.bTransposeMatrix)
 	{
 		for (int i = 0; i < Result->rows; ++i)
@@ -82,30 +81,59 @@ void MatrixTest::DoParallelLib(const TestParams & In, RetryResult & Out)
 	Result->Clear();
 
 	Out.BeginParallelWorkload();
-	int lmao = 0;
 
-	if (!testConfig.bTransposeMatrix)
+	if (!testConfig.bDoubleForParallelization)
 	{
-		parallel_for(loop, i, 0, Result->rows, 1, num_threads(In.numThreadsToUse) schedulev((pSchedule)In.forSchedule, In.forChunkSize), 
+		if (!testConfig.bTransposeMatrix)
 		{
-			for (int j = 0; j < Result->cols; ++j)
-				for (int k = 0; k < kmax; ++k)
-					Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
-		});
+			parallel_for(loop, i, 0, Result->rows, 1, num_threads(In.numThreadsToUse) schedulev((pSchedule)In.forSchedule, In.forChunkSize),
+			{
+				for (int j = 0; j < Result->cols; ++j)
+					for (int k = 0; k < kmax; ++k)
+						Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+			});
+		}
+		else
+		{
+			parallel_for(loop, i, 0, Result->rows, 1, num_threads(In.numThreadsToUse) schedulev((pSchedule)In.forSchedule, In.forChunkSize),
+			{
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+			});
+		}
 	}
 	else
 	{
-		parallel_for(loop, i, 0, Result->rows, 1, num_threads(In.numThreadsToUse) schedulev((pSchedule)In.forSchedule, In.forChunkSize),
+		if (!testConfig.bTransposeMatrix)
 		{
-				for (int j = 0; j < Result->cols; ++j)
+			parallel_for(loop, i, 0, Result->rows, 1, num_threads(In.numThreadsToUse) schedulev((pSchedule)In.forSchedule, In.forChunkSize),
+			{
+				parallel_for(inner, j, 0, Result->cols, 1, num_threads(In.numThreadsToUse) schedulev((pSchedule)In.forSchedule, In.forChunkSize),
+				{
+					for (int k = 0; k < kmax; ++k)
+						Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+				});
+			});
+		}
+		else
+		{
+			parallel_for(loop, i, 0, Result->rows, 1, num_threads(In.numThreadsToUse) schedulev((pSchedule)In.forSchedule, In.forChunkSize),
+			{
+				parallel_for(inner, j, 0, Result->cols, 1, num_threads(In.numThreadsToUse) schedulev((pSchedule)In.forSchedule, In.forChunkSize),
+				{
 					for (int k = 0; k < kmax; ++k)
 						Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
-		});
+				});
+			});
+		}
 	}
 
 	Out.BeginResourceCleanup();
 	Out.EndTask(true);
 }
+#undef schedule
+#undef num_threads
 
 void MatrixTest::DoOpenMP(const TestParams & In, RetryResult & Out)
 {
@@ -124,68 +152,136 @@ void MatrixTest::DoOpenMP(const TestParams & In, RetryResult & Out)
 	Result->Clear();
 
 	Out.BeginParallelWorkload();
-	int lmao = 0;
 
-	#undef schedule
-	#undef num_threads
-	switch (In.forSchedule)
+	if (!testConfig.bDoubleForParallelization)
 	{
-	case ForSchedule::Static:
-		if (!testConfig.bTransposeMatrix)
+		switch (In.forSchedule)
 		{
-			#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
-			for (int i = 0; i < Result->rows; ++i)
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
-		}
-		else
-		{
-			#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
-			for (int i = 0; i < Result->rows; ++i)
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
-		}
-		break;
+		case ForSchedule::Static:
+			if (!testConfig.bTransposeMatrix)
+			{
+				#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+			}
+			else
+			{
+				#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+			}
+			break;
 
-	case ForSchedule::Dynamic:
-		if (!testConfig.bTransposeMatrix)
-		{
-			#pragma omp parallel for schedule(dynamic, In.forChunkSize) num_threads(In.numThreadsToUse)
-			for (int i = 0; i < Result->rows; ++i)
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
-		}
-		else
-		{
-			#pragma omp parallel for schedule(dynamic, In.forChunkSize) num_threads(In.numThreadsToUse)
-			for (int i = 0; i < Result->rows; ++i)
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
-		}
-		break;
+		case ForSchedule::Dynamic:
+			if (!testConfig.bTransposeMatrix)
+			{
+				#pragma omp parallel for schedule(dynamic, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+			}
+			else
+			{
+				#pragma omp parallel for schedule(dynamic, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+			}
+			break;
 
-	case ForSchedule::Guided:
-		if (!testConfig.bTransposeMatrix)
-		{
-			#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
-			for (int i = 0; i < Result->rows; ++i)
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+		case ForSchedule::Guided:
+			if (!testConfig.bTransposeMatrix)
+			{
+				#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+			}
+			else
+			{
+				#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+			}
+			break;
 		}
-		else
+	}
+	else
+	{
+		switch (In.forSchedule)
 		{
-			#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
-			for (int i = 0; i < Result->rows; ++i)
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+		case ForSchedule::Static:
+			if (!testConfig.bTransposeMatrix)
+			{
+				#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+			}
+			else
+			{
+				#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+			}
+			break;
+
+		case ForSchedule::Dynamic:
+			if (!testConfig.bTransposeMatrix)
+			{
+				#pragma omp parallel for schedule(dynamic, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					#pragma omp parallel for schedule(dynamic, In.forChunkSize) num_threads(In.numThreadsToUse)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+			}
+			else
+			{
+				#pragma omp parallel for schedule(dynamic, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					#pragma omp parallel for schedule(dynamic, In.forChunkSize) num_threads(In.numThreadsToUse)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+			}
+			break;
+
+		case ForSchedule::Guided:
+			if (!testConfig.bTransposeMatrix)
+			{
+				#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+			}
+			else
+			{
+				#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+				for (int i = 0; i < Result->rows; ++i)
+					#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+			}
+			break;
 		}
-		break;
 	}
 
 	Out.BeginResourceCleanup();
@@ -194,6 +290,7 @@ void MatrixTest::DoOpenMP(const TestParams & In, RetryResult & Out)
 
 #undef parallel_for
 #include "tbb/parallel_for.h"
+#include "tbb/blocked_range2d.h"
 void MatrixTest::DoTBB(const TestParams & In, RetryResult & Out)
 {
 	Out.BeginResourceInit();
@@ -211,54 +308,119 @@ void MatrixTest::DoTBB(const TestParams & In, RetryResult & Out)
 	Result->Clear();
 
 	Out.BeginParallelWorkload();
-	int lmao = 0;
 
-	switch (In.forSchedule)
+	if (!testConfig.bDoubleForParallelization)
 	{
-	case ForSchedule::Static:
-		if (!testConfig.bTransposeMatrix)
+		switch (In.forSchedule)
 		{
-			tbb::parallel_for(0, Result->rows, [&](size_t i)
+		case ForSchedule::Static:
+			if (!testConfig.bTransposeMatrix)
 			{
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
-			}, tbb::static_partitioner());
-		}
-		else
-		{
-			tbb::parallel_for(0, Result->rows, [&](size_t i)
+				tbb::parallel_for(0, Result->rows, [&](size_t i)
+					{
+						for (int j = 0; j < Result->cols; ++j)
+							for (int k = 0; k < kmax; ++k)
+								Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+					}, tbb::static_partitioner());
+			}
+			else
 			{
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
-			}, tbb::static_partitioner());
-		}
-		break;
+				tbb::parallel_for(0, Result->rows, [&](size_t i)
+					{
+						for (int j = 0; j < Result->cols; ++j)
+							for (int k = 0; k < kmax; ++k)
+								Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+					}, tbb::static_partitioner());
+			}
+			break;
 
-	case ForSchedule::Dynamic:
-		if (!testConfig.bTransposeMatrix)
-		{
-			tbb::parallel_for(0, Result->rows, [&](size_t i)
+		case ForSchedule::Dynamic:
+			if (!testConfig.bTransposeMatrix)
 			{
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
-			});
-		}
-		else
-		{
-			tbb::parallel_for(0, Result->rows, [&](size_t i)
+				tbb::parallel_for(0, Result->rows, [&](size_t i)
+				{
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+				});
+			}
+			else
 			{
-				for (int j = 0; j < Result->cols; ++j)
-					for (int k = 0; k < kmax; ++k)
-						Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
-			});
-		}
-		break;
+				tbb::parallel_for(0, Result->rows, [&](size_t i)
+				{
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+				});
+			}
+			break;
 
-	case ForSchedule::Guided:
-		throw;
+		case ForSchedule::Guided:
+			throw;
+		}
+	}
+	else
+	{
+		switch (In.forSchedule)
+		{
+		case ForSchedule::Static:
+			if (!testConfig.bTransposeMatrix)
+			{
+				tbb::parallel_for(tbb::blocked_range2d<int, int>(0, Result->rows, 0, Result->cols), [&](const tbb::blocked_range2d<int, int> &range)
+				{
+					const int i_end = range.rows().end();
+					const int j_end = range.cols().end();
+					for (int i = range.rows().begin(); i < i_end; ++i)
+						for (int j = range.cols().begin(); j < j_end; ++j)
+							for (int k = 0; k < kmax; ++k)
+								Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+				}, tbb::static_partitioner());
+			}
+			else
+			{
+				tbb::parallel_for(tbb::blocked_range2d<int, int>(0, Result->rows, 0, Result->cols), [&](const tbb::blocked_range2d<int, int> &range)
+				{
+					const int i_end = range.rows().end();
+					const int j_end = range.cols().end();
+					for (int i = range.rows().begin(); i < i_end; ++i)
+						for (int j = range.cols().begin(); j < j_end; ++j)
+							for (int k = 0; k < kmax; ++k)
+								Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+				}, tbb::static_partitioner());
+			}
+			break;
+
+		case ForSchedule::Dynamic:
+			if (!testConfig.bTransposeMatrix)
+				if (!testConfig.bTransposeMatrix)
+				{
+					tbb::parallel_for(tbb::blocked_range2d<int, int>(0, Result->rows, 0, Result->cols), [&](const tbb::blocked_range2d<int, int> &range)
+					{
+						const int i_end = range.rows().end();
+						const int j_end = range.cols().end();
+						for (int i = range.rows().begin(); i < i_end; ++i)
+							for (int j = range.cols().begin(); j < j_end; ++j)
+								for (int k = 0; k < kmax; ++k)
+									Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+					});
+				}
+				else
+				{
+					tbb::parallel_for(tbb::blocked_range2d<int, int>(0, Result->rows, 0, Result->cols), [&](const tbb::blocked_range2d<int, int> &range)
+					{
+						const int i_end = range.rows().end();
+						const int j_end = range.cols().end();
+						for (int i = range.rows().begin(); i < i_end; ++i)
+							for (int j = range.cols().begin(); j < j_end; ++j)
+								for (int k = 0; k < kmax; ++k)
+									Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+					});
+				}
+			break;
+
+		case ForSchedule::Guided:
+			throw;
+		}
 	}
 
 	Out.BeginResourceCleanup();
@@ -288,23 +450,75 @@ void MatrixTest::DoDlib(const TestParams & In, RetryResult & Out)
 
 	Out.BeginParallelWorkload();
 
-	if (!testConfig.bTransposeMatrix)
+	if (!testConfig.bDoubleForParallelization)
 	{
-		dlib::parallel_for(tpool, 0, Result->rows, [&](long i)
+		switch (In.forSchedule)
 		{
-			for (int j = 0; j < Result->cols; ++j)
-				for (int k = 0; k < kmax; ++k)
-					Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
-		}, In.forChunkSize);
+		case ForSchedule::Static:
+			throw; //not available
+			break;
+
+		case ForSchedule::Dynamic:
+			if (!testConfig.bTransposeMatrix)
+			{
+				dlib::parallel_for(tpool, 0, Result->rows, [&](long i)
+				{
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+				}, In.forChunkSize);
+			}
+			else
+			{
+				dlib::parallel_for(tpool, 0, Result->rows, [&](long i)
+				{
+					for (int j = 0; j < Result->cols; ++j)
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+				}, In.forChunkSize);
+			}
+			break;
+
+		case ForSchedule::Guided:
+			throw; //not available
+		}
 	}
 	else
 	{
-		dlib::parallel_for(tpool, 0, Result->rows, [&](long i)
+		switch (In.forSchedule)
 		{
-			for (int j = 0; j < Result->cols; ++j)
-				for (int k = 0; k < kmax; ++k)
-					Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
-		}, In.forChunkSize);
+		case ForSchedule::Static:
+			throw; //not available
+			break;
+
+		case ForSchedule::Dynamic:
+			if (!testConfig.bTransposeMatrix)
+			{
+				dlib::parallel_for(tpool, 0, Result->rows, [&](long i)
+				{
+					dlib::parallel_for(tpool, 0, Result->cols, [&](long j)
+					{
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+					});
+				}, In.forChunkSize);
+			}
+			else
+			{
+				dlib::parallel_for(tpool, 0, Result->rows, [&](long i)
+				{
+					dlib::parallel_for(tpool, 0, Result->cols, [&](long j)
+					{
+						for (int k = 0; k < kmax; ++k)
+							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+					});
+				}, In.forChunkSize);
+			}
+			break;
+
+		case ForSchedule::Guided:
+			throw; //not available
+		}
 	}
 
 	Out.BeginResourceCleanup();
