@@ -4,25 +4,34 @@
 #ifdef __GNUC__ //Linux
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 void PrioritySetter::SetPriority(Priority priority)
 {
+    int errcode;
 	switch (priority)
 	{
 	case Priority::Default:
-        //what here	
+        errcode = setpriority(PRIO_PROCESS, getpid(), 0);
         break;
     
     case Priority::High:
-        //what here
+        errcode = setpriority(PRIO_PROCESS, getpid(), -10);
         break;
 
 	case Priority::Realtime:
-        setpriority(PRIO_PROCESS, 0, -20);
+        errcode = setpriority(PRIO_PROCESS, getpid(), -20);
         break;
 	default:
 		throw; //not implemented
 	}
+
+    if(errcode != 0)
+    {
+        printf("setpriority() didn't succeed (errno %d).\nAre you running with sudo? Exiting\n", errcode);
+        throw;
+    }
 }
 
 #else //Windows

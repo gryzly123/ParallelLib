@@ -229,15 +229,16 @@ void string(const std::vector<TargetLibrary>& testedLibraries, const int numTest
 
 int main()
 {
+	const int globalNumRepeatitions = 20;
+	const int globalMaxNumThreads = 8;
+
 	PrioritySetter::SetPriority(Priority::Realtime);
 
-	TimeStamp app_launched = TimeNow();
-
-	const int globalNumRepeatitions = 1;
-	const int globalMaxNumThreads = 8;
 	std::vector<ForTestVariant> forVariants = BuildForVariants(globalMaxNumThreads, 5); //test up to 8 threads, up to 32 chunks
 	std::vector<TargetLibrary> doLibraries = { TargetLibrary::NoLibrary, TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB, TargetLibrary::dlib };
 	std::vector<TargetLibrary> sectionsLibraries = { TargetLibrary::NoLibrary, TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB };
+
+	TimeStamp app_launched = TimeNow();
 
 	std::ofstream mandel_file("mandelbrot_result.txt");
 	mandelbrot(forVariants, globalNumRepeatitions, false /* don't export images */, mandel_file);
@@ -261,30 +262,10 @@ int main()
 	string(sectionsLibraries, globalNumRepeatitions, 10000, 2000, string_file1);
 	string(sectionsLibraries, globalNumRepeatitions, 2000, 10000, string_file2);
 
-	//while (true)
-	//{
-	//	unsigned int targetTest = 0;
-	//	std::cout << "Select test (1=mandelbrot, 2=matrix, 3=prime, 4=string): ";
-	//	std::cin >> targetTest;
-	//	switch (targetTest)
-	//	{
-	//	case 1: 
-	//	{
-	//		std::ofstream mandel_file("mandelbrot_result.txt");
-	//		mandelbrot(GenerateForVariants(), 10, 8, 5, mandel_file); 
-	//	} break;
-	//
-	//	case 2: matrix(); break;
-	//	case 3: primes(); break;
-	//	case 4: string(); break;
-	//	default: return 0;
-	//	}
-	//}
-
 	TimeStamp app_finished = TimeNow();
 	TimeSpan total = std::chrono::duration_cast<std::chrono::seconds>(app_finished - app_launched).count();
-
 	std::cout << "\nall tests done in " << total << "s.\n";
-	getchar();
+	
+getchar();
 	return 0;
 }
