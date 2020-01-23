@@ -1,8 +1,13 @@
 #MINT INSTALL - only executed once
+
+BEGIN_BOLD='\e[1;93m'
+END_BOLD='\e[0m'
+
 if [ -e bin/ ]
 then
-    echo "ParallelLib prerequisites already installed. Building."
+    echo -e "${BEGIN_BOLD}ParallelLib prerequisites already installed. Building.${END_BOLD}"
 else
+    echo -e "${BEGIN_BOLD}ParallelLib prerequisites not found. Installing GCC and TBB SOs.${END_BOLD}"
     #install required packages (GCC, C++)
     sudo add-apt-repository ppa:jonathonf/gcc
     sudo apt-get update
@@ -15,44 +20,61 @@ else
 
     #create buildfolder that also marks prerequisites as installed
     mkdir bin
-    echo "ParallelLib prerequisites have been installed. Starting build."
+    echo -e "${BEGIN_BOLD}ParallelLib prerequisites have been installed. Starting build.${END_BOLD}"
 fi
 
 #PARALLEL LIB
 #compile as static library
-mv ParallelLib/main.skip ParallelLib/main.cpp
-c++ ParallelLib/*.cpp -lpthread -o bin/static_parallellib.o
-ar rcs bin/libParallelLib.a bin/static_parallellib.o
-ranlib bin/libParallelLib.a
-#rm bin/static_parallellib.o
+echo -e "${BEGIN_BOLD}Building ParallelLib as a shared library (.so).${END_BOLD}"
+c++ ParallelLib/*.cpp \
+-lpthread             \
+-fPIC                 \
+-shared               \
+-O3                   \
+-o bin/libParallelLib.so
+echo -e "${BEGIN_BOLD}Installing ParallelLib to /usr/lib.${END_BOLD}"
+sudo cp bin/libParallelLib.so /usr/lib
 
 #TEST SUITE
-mv ParallelLib/main.cpp ParallelLib/main.skip
-
 #compile as executable
+echo -e "${BEGIN_BOLD}Building TestSuite as an unoptimized executable.${END_BOLD}"
 c++ TestSuite/*.cpp                                 \
+/usr/lib/libParallelLib.so                          \
+/usr/lib/libtbb.so.2                                \
+/usr/lib/libtbbmalloc.so.2                          \
+/usr/lib/libtbbmalloc_proxy.so.2                    \
 -lpthread                                           \
--fopenmp                                            \
-ParallelLib/*.cpp                                   \
 -I ../ParallelLib/                                  \
 -I ../ExternalLibraries/dlib/                       \
 -I ../ExternalLibraries/tbb-2020.0-lin/tbb/include/ \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbb.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc_proxy.so.2 \
--o bin/exeTestSuite
+-fopenmp                                            \
+-o bin/0-TestSuite
 
-mv ParallelLib/main.skip ParallelLib/main.cpp
+echo -e "${BEGIN_BOLD}Building TestSuite as an O3 executable.${END_BOLD}"
+c++ TestSuite/*.cpp                                 \
+/usr/lib/libParallelLib.so                          \
+/usr/lib/libtbb.so.2                                \
+/usr/lib/libtbbmalloc.so.2                          \
+/usr/lib/libtbbmalloc_proxy.so.2                    \
+-lpthread                                           \
+-I ../ParallelLib/                                  \
+-I ../ExternalLibraries/dlib/                       \
+-I ../ExternalLibraries/tbb-2020.0-lin/tbb/include/ \
+-fopenmp                                            \
+-O3                                                 \
+-o bin/3-TestSuite
 
-#-Xlinker -rpath -Xlinker $LD_LIBRARY_PATH -L $LD_LIBRARY_PATH  
-#../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbb_debug.so.2 \
-#../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbb_preview.so.2 \
-#../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbb_preview_debug.so.2 \
-#../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbbind.so.2 \
-#../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbbind_debug.so.2 \
-#../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc_debug.so.2 \
-#../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc_proxy_debug.so.2 \
-#bin/final/libParallelLib.a                         \
-#../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/* \
+echo -e "${BEGIN_BOLD}Running TestSuite O0.${END_BOLD}"
+mkdir result0
+cd result0
+sudo ./../bin/0-TestSuite
+cd ..
 
+echo -e "${BEGIN_BOLD}Running TestSuite O3.${END_BOLD}"
+mkdir result3
+cd result3
+sudo ./../bin/3-TestSuite
+cd ..
+
+echo -e "${BEGIN_BOLD}Script completed. Check results in directories 'result0' and 'result3'.${END_BOLD}"
 
