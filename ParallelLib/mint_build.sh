@@ -61,8 +61,8 @@ c++ TestSuite/*.cpp                                 \
 -I ../ExternalLibraries/dlib/                       \
 -I ../ExternalLibraries/tbb-2020.0-lin/tbb/include/ \
 -fopenmp                                            \
--O3                                                 \
--o bin/3-TestSuite
+-O2                                                 \
+-o bin/2-TestSuite
 
 echo -e "${BEGIN_BOLD}Running TestSuite O0.${END_BOLD}"
 mkdir result0
@@ -70,10 +70,10 @@ cd result0
 sudo ./../bin/0-TestSuite
 cd ..
 
-echo -e "${BEGIN_BOLD}Running TestSuite O3.${END_BOLD}"
+echo -e "${BEGIN_BOLD}Running TestSuite O2.${END_BOLD}"
 mkdir result3
 cd result3
-sudo ./../bin/3-TestSuite
+sudo ./../bin/2-TestSuite
 cd ..
 
 echo -e "${BEGIN_BOLD}Script completed. Check results in directories 'result0' and 'result3'.${END_BOLD}"
