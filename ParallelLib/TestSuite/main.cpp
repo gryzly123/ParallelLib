@@ -77,7 +77,7 @@ void mandelbrot(const std::vector<ForTestVariant>& variants, const int numTestRe
 {
 	const char* testName = "Mandelbrot";
 	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
-	DOUBLE_PRINT("LIB      \tSCHED\tNUM_THR\tCHUNK_S\tSUCC\tAVG_TIME\n");
+	DOUBLE_PRINT("LIB      \tSCHED\tNUM_THR\tCHUNK_S\tSUCC\tAVG_TIM\tSTD_DEV\n");
 
 	for (const ForTestVariant& variant : variants)
 	{
@@ -107,6 +107,7 @@ void mandelbrot(const std::vector<ForTestVariant>& variants, const int numTestRe
 					<< "\t" << targetChunkSize
 					<< "\t" << (result.DidTestSucceed() ? 1 : 0)
 					<< "\t" << result.GetAverageResultTime()
+					<< "\t" << result.GetStandardDeviation()
 					<< "\n");
 			}
 		}
@@ -117,7 +118,7 @@ void matrix(const std::vector<ForTestVariant>& variants, const int numTestRepeat
 {
 	const char* testName = "MatrixMul";
 	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
-	DOUBLE_PRINT("LIB      \tSCHED\tNUM_THR\tCHUNK_S\tSUCC\tAVG_TIME\n");
+	DOUBLE_PRINT("LIB      \tSCHED\tNUM_THR\tCHUNK_S\tSUCC\tAVG_TIM\tSTD_DEV\n");
 
 	for (const ForTestVariant& variant : variants)
 	{
@@ -147,6 +148,7 @@ void matrix(const std::vector<ForTestVariant>& variants, const int numTestRepeat
 					<< "\t" << targetChunkSize
 					<< "\t" << (result.DidTestSucceed() ? 1 : 0)
 					<< "\t" << result.GetAverageResultTime()
+					<< "\t" << result.GetStandardDeviation()
 					<< "\n");
 			}
 		}
@@ -157,7 +159,7 @@ void primes(const std::vector<TargetLibrary>& testedLibraries, const int maxNumT
 {
 	const char* testName = "Primes";
 	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
-	DOUBLE_PRINT("LIB      \tNUM_THR\tSUCC\tAVG_TIME\n");
+	DOUBLE_PRINT("LIB      \tNUM_THR\tSUCC\tAVG_TIM\tSTD_DEV\n");
 
 	for (const TargetLibrary& targetLibrary : testedLibraries)
 	{
@@ -186,6 +188,7 @@ void primes(const std::vector<TargetLibrary>& testedLibraries, const int maxNumT
 				<< "\t" << numThreads
 				<< "\t" << (result.DidTestSucceed() ? 1 : 0)
 				<< "\t" << result.GetAverageResultTime()
+				<< "\t" << result.GetStandardDeviation()
 				<< "\n");
 		}
 	}
@@ -195,7 +198,7 @@ void string(const std::vector<TargetLibrary>& testedLibraries, const int numTest
 {
 	const char* testName = "Strings";
 	printf("Tested %s (num retries: %d)\n", testName, numTestRepeatitions);
-	printf("LIB      \tSUCC\tAVG_TIME\n");
+	printf("LIB      \tSUCC\tAVG_TIM\tSTD_DEV\n");
 
 	for (const TargetLibrary& targetLibrary : testedLibraries)
 	{
@@ -219,6 +222,7 @@ void string(const std::vector<TargetLibrary>& testedLibraries, const int numTest
 			LibraryToString(result.testedLibrary)
 			<< "\t" << (result.DidTestSucceed() ? 1 : 0)
 			<< "\t" << result.GetAverageResultTime()
+			<< "\t" << result.GetStandardDeviation()
 			<< "\n");
 	}
 }

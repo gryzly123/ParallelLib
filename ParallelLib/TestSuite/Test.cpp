@@ -67,7 +67,7 @@ void RetryResult::BeginParallelWorkload()
 	if (testState != TestPhase::BegunResourceInitialization) throw;
 
 	TimeStamp end = std::chrono::steady_clock::now();
-	phaseTime[0] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+	phaseTime[0] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 	start = std::chrono::steady_clock::now();
 	testState = TestPhase::BegunParallelWorkload;
 }
@@ -77,7 +77,7 @@ void RetryResult::BeginResourceCleanup()
 	if (testState != TestPhase::BegunParallelWorkload) throw;
 
 	TimeStamp end = std::chrono::steady_clock::now();
-	phaseTime[1] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+	phaseTime[1] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 	start = std::chrono::steady_clock::now();
 	testState = TestPhase::BegunResourceCleanup;
 }
@@ -88,7 +88,7 @@ void RetryResult::EndTask(bool bSucceeded)
 	{
 		if (testState != TestPhase::BegunResourceCleanup) throw;
 		TimeStamp end = std::chrono::steady_clock::now();
-		phaseTime[2] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+		phaseTime[2] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 	}
 	testState = bSucceeded ? TestPhase::TaskEndedSuccessfully : TestPhase::TaskFailed;
 }
@@ -117,6 +117,27 @@ TimeSpan TestResult::GetAverageResultTime() const
 	if (numSucceededRetries == 0) return 0;
 	totalTime /= numSucceededRetries;
 	return totalTime;
+}
+
+TimeSpan TestResult::GetStandardDeviation() const
+{
+	TimeSpan average = GetAverageResultTime();
+
+	TimeSpan totalSquaredDiffs = 0;
+	int numSucceededRetries = 0;
+
+	for (const RetryResult& result : perTryResults)
+	{
+		if (!result.GetTaskSucceeded()) continue;
+		++numSucceededRetries;
+
+		TimeSpan duration = result.GetParallelWorkloadDuration();
+		TimeSpan diff = (duration < average) ? (average - duration) : (duration - average);
+		totalSquaredDiffs += diff * diff;
+	}
+
+	totalSquaredDiffs /= numSucceededRetries;
+	return (TimeSpan)std::sqrt(totalSquaredDiffs);
 }
 
 bool TestResult::DidTestSucceed() const
