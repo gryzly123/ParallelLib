@@ -28,29 +28,29 @@
 //parallel structure constructors
 
 	/* Creates a parallel region where each thread receives the same block of code.
-	   Supported tags:
-	   *  num_threads,
-	   *  exec_master,
-	   *  nowait
+		Supported tags:
+		*  num_threads,
+		*  exec_master,
+		*  nowait
 	*/
 	#define parallel_do(tag, params, method) \
 		pDo tag; tag params .Do([&](pExecParams ___pExecParams) method);
 	
 	/* Creates a parallel for loop where each thread receives the same block of code
 	   but executes it for different iterator values. Supports linear incrementation (i+=n, i-=n).
-	    Supported tags:
-	    *  num_threads,
-	    *  exec_master,
-	    *  nowait,
-	    *  schedule(type, chunksize)
+		Supported tags:
+		*  num_threads,
+		*  exec_master,
+		*  nowait,
+		*  schedule(type, chunksize)
 	*/
 	#define parallel_for(tag, iterator, init_val, max_val, increment, params, method) \
 		pFor tag; tag params .Do(init_val, max_val, increment, [&](pExecParams ___pExecParams, int iterator) method);
 
 	/* Creates a parallel region where each thread receives its own block of code.
-	Supported tags:
-	*  exec_master,
-	*  nowait
+		Supported tags:
+		*  exec_master,
+		*  nowait
 	*/
 #define parallel_sections(tag, params, sections) \
 		pSections tag; tag params .DoIgnoreFirst({[&](pExecParams ___pExecParams){} sections });

@@ -99,7 +99,7 @@ void PrimeTest::DoTBB(const TestParams& In, RetryResult& Out)
 
 	tbb::parallel_do(
 		tbb::counting_iterator<int>(0),
-		tbb::counting_iterator<int>(In.numThreadsToUse - 1),
+		tbb::counting_iterator<int>(In.numThreadsToUse),
 		[&](int thread_id, tbb::parallel_do_feeder<int>& feeder)
 		{
 			while (true)
