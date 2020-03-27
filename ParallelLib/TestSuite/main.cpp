@@ -32,7 +32,12 @@ std::vector<ForTestVariant> BuildForVariants(const int maxNumTestedThreads, cons
 
 	std::vector<int> sequentialThreads = { 1 };
 	std::vector<int> parallelThreads;
-	for (int i = 2; i <= maxNumTestedThreads; ++i) parallelThreads.push_back(i);
+	std::vector<int> parallelThreadsTbb;
+	for (int i = 2; i <= maxNumTestedThreads; ++i)
+	{
+		parallelThreads.push_back(i);
+		if(i < 4) parallelThreadsTbb.push_back(i);
+	}
 
 	std::vector<int> unsupportedChunks = { 0 };
 	std::vector<int> supportedChunks;
@@ -45,8 +50,8 @@ std::vector<ForTestVariant> BuildForVariants(const int maxNumTestedThreads, cons
 		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Guided,  unsupportedChunks, parallelThreads),
 		ForTestVariant(TargetLibrary::ParallelLib, ForSchedule::Static,  unsupportedChunks, parallelThreads),
 		ForTestVariant(TargetLibrary::ParallelLib, ForSchedule::Dynamic,   supportedChunks, parallelThreads),
-		ForTestVariant(TargetLibrary::IntelTBB,    ForSchedule::Static,  unsupportedChunks, parallelThreads),
-		ForTestVariant(TargetLibrary::IntelTBB,    ForSchedule::Dynamic, unsupportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::IntelTBB,    ForSchedule::Static,  unsupportedChunks, parallelThreadsTbb),
+		ForTestVariant(TargetLibrary::IntelTBB,    ForSchedule::Dynamic, unsupportedChunks, parallelThreadsTbb),
 		ForTestVariant(TargetLibrary::dlib,        ForSchedule::Dynamic,   supportedChunks, parallelThreads)
 	};
 }
@@ -236,39 +241,41 @@ int main()
 	const int globalNumRepeatitions = 20;
 	const int globalMaxNumThreads = 8;
 
-	PrioritySetter::SetPriority(Priority::Realtime);
+	//PrioritySetter::SetPriority(Priority::Realtime);
 
 	std::vector<ForTestVariant> forVariants = BuildForVariants(globalMaxNumThreads, 5); //test up to 8 threads, up to 32 chunks
 	std::vector<TargetLibrary> doLibraries = { TargetLibrary::NoLibrary, TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB, TargetLibrary::dlib };
 	std::vector<TargetLibrary> sectionsLibraries = { TargetLibrary::NoLibrary, TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB };
 
-	TimeStamp app_launched = TimeNow();
-
-	std::ofstream mandel_file("mandelbrot_result.txt");
-	mandelbrot(forVariants, globalNumRepeatitions, false /* don't export images */, mandel_file);
-	
-	std::ofstream matrix_file1("matrix_result.txt");
-	std::ofstream matrix_file2("matrix_result_transposed.txt");
-	std::ofstream matrix_file3("matrix_result_nested.txt");
-	std::ofstream matrix_file4("matrix_result_nested_transposed.txt");
-	matrix(forVariants, globalNumRepeatitions, false, false, matrix_file1);
-	matrix(forVariants, globalNumRepeatitions, true,  false, matrix_file2);
-	matrix(forVariants, globalNumRepeatitions, false, true,  matrix_file3);
-	matrix(forVariants, globalNumRepeatitions, true,  true,  matrix_file4);
-
-	std::ofstream primes5000_file("primes_result_5000.txt");
-	std::ofstream primes50000_file("primes_result_50000.txt");
-	primes(doLibraries, globalMaxNumThreads, globalNumRepeatitions, 2, 5000, primes5000_file);
-	primes(doLibraries, globalMaxNumThreads, globalNumRepeatitions, 2, 50000, primes50000_file);
-
-	std::ofstream string_file1("primes_result_10000strX2000ch.txt");
-	std::ofstream string_file2("primes_result_2000strX10000ch.txt");
-	string(sectionsLibraries, globalNumRepeatitions, 10000, 2000, string_file1);
-	string(sectionsLibraries, globalNumRepeatitions, 2000, 10000, string_file2);
-
-	TimeStamp app_finished = TimeNow();
-	TimeSpan total = std::chrono::duration_cast<std::chrono::seconds>(app_finished - app_launched).count();
-	std::cout << "\nall tests done in " << total << "s.\n";
+	// TimeStamp app_launched = TimeNow();
+	// 
+	// std::ofstream mandel_file("mandelbrot_result.txt");
+	// mandelbrot(forVariants, globalNumRepeatitions, false /* don't export images */, mandel_file);
+	// 
+	// std::ofstream matrix_file1("matrix_result.txt");
+	// std::ofstream matrix_file2("matrix_result_transposed.txt");
+	// std::ofstream matrix_file3("matrix_result_nested.txt");
+	// std::ofstream matrix_file4("matrix_result_nested_transposed.txt");
+	// matrix(forVariants, globalNumRepeatitions, false, false, matrix_file1);
+	// matrix(forVariants, globalNumRepeatitions, true,  false, matrix_file2);
+	// matrix(forVariants, globalNumRepeatitions, false, true,  matrix_file3);
+	// matrix(forVariants, globalNumRepeatitions, true,  true,  matrix_file4);
+	// 
+	   std::ofstream primes5000_file("primes_result_5000.txt");
+	   std::ofstream primes50000_file("primes_result_50000.txt");
+	   std::ofstream str_file("strrr.txt");
+	   string({ TargetLibrary::NoLibrary, TargetLibrary::ParallelLib }, globalNumRepeatitions, 10000, 2000, str_file);
+	   //primes({ TargetLibrary::NoLibrary, TargetLibrary::ParallelLib }, globalMaxNumThreads, globalNumRepeatitions, 2, 5000, primes5000_file);
+	   //primes({ TargetLibrary::NoLibrary, TargetLibrary::ParallelLib }, globalMaxNumThreads, globalNumRepeatitions, 2, 50000, primes50000_file);
+	// 
+	// std::ofstream string_file1("strings_result_10000strX2000ch.txt");
+	// std::ofstream string_file2("strings_result_2000strX10000ch.txt");
+	// string(sectionsLibraries, globalNumRepeatitions, 10000, 2000, string_file1);
+	// string(sectionsLibraries, globalNumRepeatitions, 2000, 10000, string_file2);
+	// 
+	// TimeStamp app_finished = TimeNow();
+	// TimeSpan total = std::chrono::duration_cast<std::chrono::seconds>(app_finished - app_launched).count();
+	// std::cout << "\nall tests done in " << total << "s.\n";
 	
 getchar();
 	return 0;

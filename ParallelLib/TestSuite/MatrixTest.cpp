@@ -392,30 +392,29 @@ void MatrixTest::DoTBB(const TestParams & In, RetryResult & Out)
 
 		case ForSchedule::Dynamic:
 			if (!testConfig.bTransposeMatrix)
-				if (!testConfig.bTransposeMatrix)
+			{
+				tbb::parallel_for(tbb::blocked_range2d<int, int>(0, Result->rows, 0, Result->cols), [&](const tbb::blocked_range2d<int, int> &range)
 				{
-					tbb::parallel_for(tbb::blocked_range2d<int, int>(0, Result->rows, 0, Result->cols), [&](const tbb::blocked_range2d<int, int> &range)
-					{
-						const int i_end = range.rows().end();
-						const int j_end = range.cols().end();
-						for (int i = range.rows().begin(); i < i_end; ++i)
-							for (int j = range.cols().begin(); j < j_end; ++j)
-								for (int k = 0; k < kmax; ++k)
-									Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
-					});
-				}
-				else
+					const int i_end = range.rows().end();
+					const int j_end = range.cols().end();
+					for (int i = range.rows().begin(); i < i_end; ++i)
+						for (int j = range.cols().begin(); j < j_end; ++j)
+							for (int k = 0; k < kmax; ++k)
+								Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
+				});
+			}
+			else
+			{
+				tbb::parallel_for(tbb::blocked_range2d<int, int>(0, Result->rows, 0, Result->cols), [&](const tbb::blocked_range2d<int, int> &range)
 				{
-					tbb::parallel_for(tbb::blocked_range2d<int, int>(0, Result->rows, 0, Result->cols), [&](const tbb::blocked_range2d<int, int> &range)
-					{
-						const int i_end = range.rows().end();
-						const int j_end = range.cols().end();
-						for (int i = range.rows().begin(); i < i_end; ++i)
-							for (int j = range.cols().begin(); j < j_end; ++j)
-								for (int k = 0; k < kmax; ++k)
-									Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
-					});
-				}
+					const int i_end = range.rows().end();
+					const int j_end = range.cols().end();
+					for (int i = range.rows().begin(); i < i_end; ++i)
+						for (int j = range.cols().begin(); j < j_end; ++j)
+							for (int k = 0; k < kmax; ++k)
+								Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
+				});
+			}
 			break;
 
 		case ForSchedule::Guided:

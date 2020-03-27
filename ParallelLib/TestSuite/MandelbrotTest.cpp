@@ -11,43 +11,46 @@
 #define WRITE fprintf_s
 #endif
 
-#define TEST_CORE(thread_id)                                                                 \
-/*for (int iY = 0; iY < config.iYmax; iY++) <-paralleled for - to bedeclared outside macro */\
-{                                                                                            \
+// Note: Test core is based on program published on Rosetta Code:
+// https://rosettacode.org/wiki/Mandelbrot_set#PPM_non_interactive
+
+#define TEST_CORE(thread_id)                                                                     \
+/*for (int iY = 0; iY < config.iYmax; iY++) <-paralleled for - to bedeclared outside macro */    \
+{                                                                                                \
 	Cy = testConfig.CyMin + iY * PixelHeight;                                                    \
-	if (fabs(Cy) < PixelHeight / 2) Cy = 0.0;                                                \
-                                                                                             \
+	if (fabs(Cy) < PixelHeight / 2) Cy = 0.0;                                                    \
+	                                                                                             \
 	for (int iX = 0; iX < testConfig.iXmax; iX++)                                                \
-	{                                                                                        \
+	{                                                                                            \
 		Cx = testConfig.CxMin + iX * PixelWidth;                                                 \
-		/*initial value of orbit = critical point Z = 0*/                                    \
-		Zx = 0.0;                                                                            \
-		Zy = 0.0;                                                                            \
-		Zx2 = Zx * Zx;                                                                       \
-		Zy2 = Zy * Zy;                                                                       \
-                                                                                             \
-		int Iteration = 0;                                                                   \
+		/*initial value of orbit = critical point Z = 0*/                                        \
+		Zx = 0.0;                                                                                \
+		Zy = 0.0;                                                                                \
+		Zx2 = Zx * Zx;                                                                           \
+		Zy2 = Zy * Zy;                                                                           \
+		                                                                                         \
+		int Iteration = 0;                                                                       \
 		for (Iteration; Iteration < testConfig.IterationMax && ((Zx2 + Zy2) < ER2); Iteration++) \
-		{                                                                                    \
-			Zy = 2 * Zx*Zy + Cy;                                                             \
-			Zx = Zx2 - Zy2 + Cx;                                                             \
-			Zx2 = Zx * Zx;                                                                   \
-			Zy2 = Zy * Zy;                                                                   \
-		};                                                                                   \
-		/*compute  pixel color (24 bit = 3 bytes)*/                                          \
+		{                                                                                        \
+			Zy = 2 * Zx*Zy + Cy;                                                                 \
+			Zx = Zx2 - Zy2 + Cx;                                                                 \
+			Zx2 = Zx * Zx;                                                                       \
+			Zy2 = Zy * Zy;                                                                       \
+		};                                                                                       \
+		/*compute  pixel color (24 bit = 3 bytes)*/                                              \
 		if (Iteration == testConfig.IterationMax) /* interior */                                 \
-		{                                                                                    \
+		{                                                                                        \
 			Image[((iY * testConfig.iYmax) + iX) * 3 + 0] = 0;                                   \
 			Image[((iY * testConfig.iYmax) + iX) * 3 + 1] = 0;                                   \
 			Image[((iY * testConfig.iYmax) + iX) * 3 + 2] = 0;                                   \
-		}                                                                                    \
-		else /* exterior */                                                                  \
-		{                                                                                    \
+		}                                                                                        \
+		else /* exterior */                                                                      \
+		{                                                                                        \
 			Image[((iY * testConfig.iYmax) + iX) * 3 + 0] = 255;                                 \
 			Image[((iY * testConfig.iYmax) + iX) * 3 + 1] = 255;                                 \
 			Image[((iY * testConfig.iYmax) + iX) * 3 + 2] = 255;                                 \
-		};                                                                                   \
-	}                                                                                        \
+		};                                                                                       \
+	}                                                                                            \
 }
 
 MandelbrotTest::MandelbrotTest(const std::string& inName, MandelbrotTestConfig& testConfig) 

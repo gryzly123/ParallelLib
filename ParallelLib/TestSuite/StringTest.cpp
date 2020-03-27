@@ -600,6 +600,7 @@ void StringTest::DoTBB(const TestParams& In, RetryResult& Out)
 }
 
 #include "ParallelLib/ParallelLib.h"
+#include <condition_variable>
 void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 {
 	Out.BeginResourceInit();
@@ -608,6 +609,7 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 	StringList* LowerStrings = nullptr;
 	StringList* AlternatedStrings = nullptr;
 	std::mutex use_producer_object;
+	std::condition_variable cv;
 
 	bool bProductionCompleted = false;
 
@@ -636,6 +638,7 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 						ProducedPtr = NewProduced;
 					}
 				}
+				cv.notify_all();
 			}
 			bProductionCompleted = true;
 		}
@@ -670,7 +673,11 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 							bNothingToProcess = false;
 						}
 					}
-					if (bNothingToProcess) PARALLEL_SLEEP_MILISECONDS(1);
+					if (bNothingToProcess)
+					{
+						std::unique_lock<std::mutex> lock(use_producer_object);
+						cv.wait(lock, [] { return true; });
+					}
 				}
 				if (!bStringsLeft) break;
 
@@ -722,7 +729,11 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 							bNothingToProcess = false;
 						}
 					}
-					if (bNothingToProcess) PARALLEL_SLEEP_MILISECONDS(1);
+					if (bNothingToProcess)
+					{
+						std::unique_lock<std::mutex> lock(use_producer_object);
+						cv.wait(lock, [] { return true; });
+					}
 				}
 				if (!bStringsLeft) break;
 
@@ -775,7 +786,11 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 							bNothingToProcess = false;
 						}
 					}
-					if (bNothingToProcess) PARALLEL_SLEEP_MILISECONDS(1);
+					if (bNothingToProcess)
+					{
+						std::unique_lock<std::mutex> lock(use_producer_object);
+						cv.wait(lock, [] { return true; });
+					}
 				}
 				if (!bStringsLeft) break;
 
