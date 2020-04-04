@@ -160,7 +160,7 @@ void MatrixTest::DoOpenMP(const TestParams & In, RetryResult & Out)
 		case ForSchedule::Static:
 			if (!testConfig.bTransposeMatrix)
 			{
-				#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+				#pragma omp parallel for schedule(static) num_threads(In.numThreadsToUse)
 				for (int i = 0; i < Result->rows; ++i)
 					for (int j = 0; j < Result->cols; ++j)
 						for (int k = 0; k < kmax; ++k)
@@ -168,7 +168,7 @@ void MatrixTest::DoOpenMP(const TestParams & In, RetryResult & Out)
 			}
 			else
 			{
-				#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+				#pragma omp parallel for schedule(static) num_threads(In.numThreadsToUse)
 				for (int i = 0; i < Result->rows; ++i)
 					for (int j = 0; j < Result->cols; ++j)
 						for (int k = 0; k < kmax; ++k)
@@ -198,7 +198,7 @@ void MatrixTest::DoOpenMP(const TestParams & In, RetryResult & Out)
 		case ForSchedule::Guided:
 			if (!testConfig.bTransposeMatrix)
 			{
-				#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+				#pragma omp parallel for schedule(guided) num_threads(In.numThreadsToUse)
 				for (int i = 0; i < Result->rows; ++i)
 					for (int j = 0; j < Result->cols; ++j)
 						for (int k = 0; k < kmax; ++k)
@@ -206,7 +206,7 @@ void MatrixTest::DoOpenMP(const TestParams & In, RetryResult & Out)
 			}
 			else
 			{
-				#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+				#pragma omp parallel for schedule(guided) num_threads(In.numThreadsToUse)
 				for (int i = 0; i < Result->rows; ++i)
 					for (int j = 0; j < Result->cols; ++j)
 						for (int k = 0; k < kmax; ++k)
@@ -222,18 +222,18 @@ void MatrixTest::DoOpenMP(const TestParams & In, RetryResult & Out)
 		case ForSchedule::Static:
 			if (!testConfig.bTransposeMatrix)
 			{
-				#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+				#pragma omp parallel for schedule(static) num_threads(In.numThreadsToUse)
 				for (int i = 0; i < Result->rows; ++i)
-					#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+					#pragma omp parallel for schedule(static) num_threads(In.numThreadsToUse)
 					for (int j = 0; j < Result->cols; ++j)
 						for (int k = 0; k < kmax; ++k)
 							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
 			}
 			else
 			{
-				#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+				#pragma omp parallel for schedule(static) num_threads(In.numThreadsToUse)
 				for (int i = 0; i < Result->rows; ++i)
-					#pragma omp parallel for schedule(static, In.forChunkSize) num_threads(In.numThreadsToUse)
+					#pragma omp parallel for schedule(static) num_threads(In.numThreadsToUse)
 					for (int j = 0; j < Result->cols; ++j)
 						for (int k = 0; k < kmax; ++k)
 							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
@@ -264,18 +264,18 @@ void MatrixTest::DoOpenMP(const TestParams & In, RetryResult & Out)
 		case ForSchedule::Guided:
 			if (!testConfig.bTransposeMatrix)
 			{
-				#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+				#pragma omp parallel for schedule(guided) num_threads(In.numThreadsToUse)
 				for (int i = 0; i < Result->rows; ++i)
-					#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+					#pragma omp parallel for schedule(guided) num_threads(In.numThreadsToUse)
 					for (int j = 0; j < Result->cols; ++j)
 						for (int k = 0; k < kmax; ++k)
 							Result->arr[i][j] += A->arr[i][k] * B->arr[k][j];
 			}
 			else
 			{
-				#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+				#pragma omp parallel for schedule(guided) num_threads(In.numThreadsToUse)
 				for (int i = 0; i < Result->rows; ++i)
-					#pragma omp parallel for schedule(guided, In.forChunkSize) num_threads(In.numThreadsToUse)
+					#pragma omp parallel for schedule(guided) num_threads(In.numThreadsToUse)
 					for (int j = 0; j < Result->cols; ++j)
 						for (int k = 0; k < kmax; ++k)
 							Result->arr[i][j] += A->arr[i][k] * B->arr[j][k];
