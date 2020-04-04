@@ -158,27 +158,23 @@ void StringTest::DoSequentially(const TestParams& In, RetryResult& Out)
 		while ((LastProcessedProduced = LastProcessedProduced->next) != nullptr);
 
 		Out.BeginResourceCleanup();
-		//printf("\n\n%s\n%s\n%s\n%s\n\n", ProducedStrings.string, UpperStrings.string, LowerStrings.string, AlternatedStrings.string);
-
 		//note: data will be removed at the end of scope thanks to StringList's destructor
 	}
 	Out.EndTask(true);
 }
 
 #ifndef __GNUC__
-#include <Windows.h>
-#define ___sleep(ms) Sleep(ms)
+	#include <Windows.h>
+	#define ___sleep(ms) { if (testConfig.bUseSleepInBusywait) Sleep(ms); }
 #else
-void ___sleep(int ms)
-{
-    struct timespec time, outtime;
-    time.tv_sec = ms / 1000;
-    time.tv_nsec = (ms % 1000) * 1000000;
-    nanosleep(&time, &outtime);
-}
+	#define ___sleep(ms) { if (testConfig.bUseSleepInBusywait) \
+	{                                                   \
+	    struct timespec time, outtime;                  \
+	    time.tv_sec = ms / 1000;                        \
+	    time.tv_nsec = (ms % 1000) * 1000000;           \
+	    nanosleep(&time, &outtime)                      \
+	} }
 #endif
-
-//void ConsumerThread(StringList*& targetArray, bool& bProductionCompleted,)
 
 void StringTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 {
@@ -609,7 +605,6 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 	StringList* LowerStrings = nullptr;
 	StringList* AlternatedStrings = nullptr;
 	std::mutex use_producer_object;
-	std::condition_variable cv;
 
 	bool bProductionCompleted = false;
 
@@ -638,7 +633,6 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 						ProducedPtr = NewProduced;
 					}
 				}
-				cv.notify_all();
 			}
 			bProductionCompleted = true;
 		}
@@ -675,8 +669,7 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 					}
 					if (bNothingToProcess)
 					{
-						std::unique_lock<std::mutex> lock(use_producer_object);
-						cv.wait(lock, [] { return true; });
+						___sleep(1);
 					}
 				}
 				if (!bStringsLeft) break;
@@ -731,8 +724,8 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 					}
 					if (bNothingToProcess)
 					{
-						std::unique_lock<std::mutex> lock(use_producer_object);
-						cv.wait(lock, [] { return true; });
+						___sleep(1);
+
 					}
 				}
 				if (!bStringsLeft) break;
@@ -788,8 +781,8 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 					}
 					if (bNothingToProcess)
 					{
-						std::unique_lock<std::mutex> lock(use_producer_object);
-						cv.wait(lock, [] { return true; });
+						___sleep(1);
+
 					}
 				}
 				if (!bStringsLeft) break;

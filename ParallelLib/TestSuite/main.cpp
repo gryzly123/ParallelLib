@@ -17,18 +17,18 @@ struct ForTestVariant
 		: targetLibrary(targetLibrary), targetSchedule(targetSchedule), targetChunkSize(targetChunkSize), numThreads(numThreads) { }
 };
 
-std::vector<ForTestVariant> BuildForVariants(const int maxNumTestedThreads, const int maxTestedChunkPower)
+std::vector<ForTestVariant> BuildForVariants(const int maxNumTestedThreads, const int maxNumTestedThreadsTbb)
 {
 	//Possible test variants
 	// * Sequential
-	// * OpenMP Static: chunks 1-32
-	// * OpenMP Dynamic: chunks 1-32
+	// * OpenMP Static
+	// * OpenMP Dynami
 	// * OpenMP Guided
 	// * ParallelLib Static
 	// * ParallelLib Dynamic
 	// * TBB Static
 	// * TBB Default ("dynamic")
-	// * dlib Default ("dynamic"): chunks 1-32
+	// * dlib Default ("dynamic")
 
 	std::vector<int> sequentialThreads = { 1 };
 	std::vector<int> parallelThreads;
@@ -36,16 +36,15 @@ std::vector<ForTestVariant> BuildForVariants(const int maxNumTestedThreads, cons
 	for (int i = 2; i <= maxNumTestedThreads; ++i)
 	{
 		parallelThreads.push_back(i);
-		if(i < 4) parallelThreadsTbb.push_back(i);
+		if(i <= maxNumTestedThreadsTbb) parallelThreadsTbb.push_back(i);
 	}
 
 	std::vector<int> unsupportedChunks = { 0 };
-	std::vector<int> supportedChunks;
-	for (int i = 0; i <= maxTestedChunkPower; ++i) supportedChunks.push_back(1 << i);
+	std::vector<int> supportedChunks = { 1 };
 
 	return {
 		ForTestVariant(TargetLibrary::NoLibrary,   ForSchedule::None,    unsupportedChunks, sequentialThreads),
-		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Static,    supportedChunks, parallelThreads),
+		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Static,  unsupportedChunks, parallelThreads), //OMP static should handle chunksize automatically
 		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Dynamic,   supportedChunks, parallelThreads),
 		ForTestVariant(TargetLibrary::OpenMP,      ForSchedule::Guided,  unsupportedChunks, parallelThreads),
 		ForTestVariant(TargetLibrary::ParallelLib, ForSchedule::Static,  unsupportedChunks, parallelThreads),
@@ -82,7 +81,7 @@ void mandelbrot(const std::vector<ForTestVariant>& variants, const int numTestRe
 {
 	const char* testName = "Mandelbrot";
 	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
-	DOUBLE_PRINT("LIB      \tSCHED\tNUM_THR\tCHUNK_S\tSUCC\tAVG_TIM\tSTD_DEV\n");
+	DOUBLE_PRINT("LIB\tSCHED\tNUM_THR\tAVG_TIM\tSTD_DEV\n");
 
 	for (const ForTestVariant& variant : variants)
 	{
@@ -105,12 +104,11 @@ void mandelbrot(const std::vector<ForTestVariant>& variants, const int numTestRe
 				std::vector<TestResult> perLibraryResults;
 				test.PerformTests({ variant.targetLibrary }, config, perLibraryResults);
 				const TestResult& result = perLibraryResults[0];
+				if (!result.DidTestSucceed()) throw;
 				DOUBLE_PRINT(
 					LibraryToString(result.testedLibrary)
 					<< "\t" << ForScheduleToString(variant.targetSchedule)
 					<< "\t" << numThreads
-					<< "\t" << targetChunkSize
-					<< "\t" << (result.DidTestSucceed() ? 1 : 0)
 					<< "\t" << result.GetAverageResultTime()
 					<< "\t" << result.GetStandardDeviation()
 					<< "\n");
@@ -123,7 +121,7 @@ void matrix(const std::vector<ForTestVariant>& variants, const int numTestRepeat
 {
 	const char* testName = "MatrixMul";
 	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
-	DOUBLE_PRINT("LIB      \tSCHED\tNUM_THR\tCHUNK_S\tSUCC\tAVG_TIM\tSTD_DEV\n");
+	DOUBLE_PRINT("LIB\tSCHED\tNUM_THR\tAVG_TIM\tSTD_DEV\n");
 
 	for (const ForTestVariant& variant : variants)
 	{
@@ -146,12 +144,11 @@ void matrix(const std::vector<ForTestVariant>& variants, const int numTestRepeat
 				std::vector<TestResult> perLibraryResults;
 				test.PerformTests({ variant.targetLibrary }, config, perLibraryResults);
 				const TestResult& result = perLibraryResults[0];
+				if (!result.DidTestSucceed()) throw;
 				DOUBLE_PRINT(
 					LibraryToString(result.testedLibrary)
 					<< "\t" << ForScheduleToString(variant.targetSchedule)
 					<< "\t" << numThreads
-					<< "\t" << targetChunkSize
-					<< "\t" << (result.DidTestSucceed() ? 1 : 0)
 					<< "\t" << result.GetAverageResultTime()
 					<< "\t" << result.GetStandardDeviation()
 					<< "\n");
@@ -160,11 +157,11 @@ void matrix(const std::vector<ForTestVariant>& variants, const int numTestRepeat
 	}
 }
 
-void primes(const std::vector<TargetLibrary>& testedLibraries, const int maxNumThreads, const int numTestRepeatitions, const int searchRangeMin, const int searchRangeMax, std::ostream& printBuffer)
+void primes(const std::vector<TargetLibrary>& testedLibraries, const int maxNumThreads, const int maxTbbNumThreads, const int numTestRepeatitions, const int searchRangeMin, const int searchRangeMax, std::ostream& printBuffer)
 {
 	const char* testName = "Primes";
 	DOUBLE_PRINT("Tested" << testName << " (num retries: " << numTestRepeatitions << ")\n");
-	DOUBLE_PRINT("LIB      \tNUM_THR\tSUCC\tAVG_TIM\tSTD_DEV\n");
+	DOUBLE_PRINT("LIB\tNUM_THR\tAVG_TIM\tSTD_DEV\n");
 
 	for (const TargetLibrary& targetLibrary : testedLibraries)
 	{
@@ -172,6 +169,7 @@ void primes(const std::vector<TargetLibrary>& testedLibraries, const int maxNumT
 		{
 			if (numThreads == 1 && targetLibrary != TargetLibrary::NoLibrary) continue;
 			if (numThreads != 1 && targetLibrary == TargetLibrary::NoLibrary) continue;
+			if (numThreads > maxTbbNumThreads && targetLibrary == TargetLibrary::IntelTBB) continue;
 
 			PrimeTestConfig primeConfig = PrimeTestConfig(searchRangeMin, searchRangeMax);
 			PrimeTest test = PrimeTest(testName, primeConfig);
@@ -188,10 +186,10 @@ void primes(const std::vector<TargetLibrary>& testedLibraries, const int maxNumT
 			std::vector<TestResult> perLibraryResults;
 			test.PerformTests({ targetLibrary }, config, perLibraryResults);
 			const TestResult& result = perLibraryResults[0];
+			if (!result.DidTestSucceed()) throw;
 			DOUBLE_PRINT(
 				LibraryToString(result.testedLibrary)
 				<< "\t" << numThreads
-				<< "\t" << (result.DidTestSucceed() ? 1 : 0)
 				<< "\t" << result.GetAverageResultTime()
 				<< "\t" << result.GetStandardDeviation()
 				<< "\n");
@@ -199,15 +197,15 @@ void primes(const std::vector<TargetLibrary>& testedLibraries, const int maxNumT
 	}
 }
 
-void string(const std::vector<TargetLibrary>& testedLibraries, const int numTestRepeatitions, const int numStrings, const int stringLengths, std::ostream& printBuffer)
+void string(const std::vector<TargetLibrary>& testedLibraries, const int numTestRepeatitions, const bool bUseSleepInBusywait, const int numStrings, const int stringLengths, std::ostream& printBuffer)
 {
 	const char* testName = "Strings";
-	printf("Tested %s (num retries: %d)\n", testName, numTestRepeatitions);
-	printf("LIB      \tSUCC\tAVG_TIM\tSTD_DEV\n");
+	DOUBLE_PRINT("Tested " << testName << " (num retries: " << numTestRepeatitions << ")\n");
+	DOUBLE_PRINT("LIB\tAVG_TIM\tSTD_DEV\n");
 
 	for (const TargetLibrary& targetLibrary : testedLibraries)
 	{
-		StringTestConfig primeConfig = StringTestConfig(numStrings, stringLengths);
+		StringTestConfig primeConfig = StringTestConfig(numStrings, stringLengths, bUseSleepInBusywait);
 		const int numThreads = (targetLibrary == TargetLibrary::NoLibrary) ? 1 : 4;
 		StringTest test = StringTest(testName, primeConfig);
 		TestParams config(
@@ -223,9 +221,9 @@ void string(const std::vector<TargetLibrary>& testedLibraries, const int numTest
 		std::vector<TestResult> perLibraryResults;
 		test.PerformTests({ targetLibrary }, config, perLibraryResults);
 		const TestResult& result = perLibraryResults[0];
+		if (!result.DidTestSucceed()) throw;
 		DOUBLE_PRINT(
 			LibraryToString(result.testedLibrary)
-			<< "\t" << (result.DidTestSucceed() ? 1 : 0)
 			<< "\t" << result.GetAverageResultTime()
 			<< "\t" << result.GetStandardDeviation()
 			<< "\n");
@@ -240,43 +238,45 @@ int main()
 {
 	const int globalNumRepeatitions = 20;
 	const int globalMaxNumThreads = 8;
+	const int globalMaxNumThreadsTbb = 4;
 
-	//PrioritySetter::SetPriority(Priority::Realtime);
+	PrioritySetter::SetPriority(Priority::Realtime);
 
-	std::vector<ForTestVariant> forVariants = BuildForVariants(globalMaxNumThreads, 5); //test up to 8 threads, up to 32 chunks
+	std::vector<ForTestVariant> forVariants = BuildForVariants(globalMaxNumThreads, globalMaxNumThreadsTbb);
 	std::vector<TargetLibrary> doLibraries = { TargetLibrary::NoLibrary, TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB, TargetLibrary::dlib };
 	std::vector<TargetLibrary> sectionsLibraries = { TargetLibrary::NoLibrary, TargetLibrary::OpenMP, TargetLibrary::ParallelLib, TargetLibrary::IntelTBB };
 
-	// TimeStamp app_launched = TimeNow();
-	// 
-	// std::ofstream mandel_file("mandelbrot_result.txt");
-	// mandelbrot(forVariants, globalNumRepeatitions, false /* don't export images */, mandel_file);
-	// 
-	// std::ofstream matrix_file1("matrix_result.txt");
-	// std::ofstream matrix_file2("matrix_result_transposed.txt");
-	// std::ofstream matrix_file3("matrix_result_nested.txt");
-	// std::ofstream matrix_file4("matrix_result_nested_transposed.txt");
-	// matrix(forVariants, globalNumRepeatitions, false, false, matrix_file1);
-	// matrix(forVariants, globalNumRepeatitions, true,  false, matrix_file2);
-	// matrix(forVariants, globalNumRepeatitions, false, true,  matrix_file3);
-	// matrix(forVariants, globalNumRepeatitions, true,  true,  matrix_file4);
-	// 
-	   std::ofstream primes5000_file("primes_result_5000.txt");
-	   std::ofstream primes50000_file("primes_result_50000.txt");
-	   std::ofstream str_file("strrr.txt");
-	   string({ TargetLibrary::NoLibrary, TargetLibrary::ParallelLib }, globalNumRepeatitions, 10000, 2000, str_file);
-	   //primes({ TargetLibrary::NoLibrary, TargetLibrary::ParallelLib }, globalMaxNumThreads, globalNumRepeatitions, 2, 5000, primes5000_file);
-	   //primes({ TargetLibrary::NoLibrary, TargetLibrary::ParallelLib }, globalMaxNumThreads, globalNumRepeatitions, 2, 50000, primes50000_file);
-	// 
-	// std::ofstream string_file1("strings_result_10000strX2000ch.txt");
-	// std::ofstream string_file2("strings_result_2000strX10000ch.txt");
-	// string(sectionsLibraries, globalNumRepeatitions, 10000, 2000, string_file1);
-	// string(sectionsLibraries, globalNumRepeatitions, 2000, 10000, string_file2);
-	// 
-	// TimeStamp app_finished = TimeNow();
-	// TimeSpan total = std::chrono::duration_cast<std::chrono::seconds>(app_finished - app_launched).count();
-	// std::cout << "\nall tests done in " << total << "s.\n";
+	TimeStamp app_launched = TimeNow();
 	
-getchar();
+	std::ofstream mandel_file("mandelbrot_result.txt");
+	mandelbrot(forVariants, globalNumRepeatitions, false /* don't export images */, mandel_file);
+	
+	std::ofstream matrix_file1("matrix_result.txt");
+	std::ofstream matrix_file2("matrix_result_transposed.txt");
+	std::ofstream matrix_file3("matrix_result_nested.txt");
+	std::ofstream matrix_file4("matrix_result_nested_transposed.txt");
+	matrix(forVariants, globalNumRepeatitions, false, false, matrix_file1);
+	matrix(forVariants, globalNumRepeatitions, true,  false, matrix_file2);
+	matrix(forVariants, globalNumRepeatitions, false, true,  matrix_file3);
+	matrix(forVariants, globalNumRepeatitions, true,  true,  matrix_file4);
+	
+	std::ofstream primes5000_file("primes_result_1000000.txt");
+	std::ofstream primes50000_file("primes_result_10000000.txt");
+	primes(doLibraries, globalMaxNumThreads, globalMaxNumThreadsTbb, globalNumRepeatitions, 2, 1000000, primes5000_file);
+	primes(doLibraries, globalMaxNumThreads, globalMaxNumThreadsTbb, globalNumRepeatitions, 2, 10000000, primes50000_file);
+	
+	std::ofstream string_file1("strings_result_10000strX2000ch_sleep.txt");
+	std::ofstream string_file2("strings_result_2000strX10000ch_sleep.txt");
+	std::ofstream string_file3("strings_result_10000strX2000ch_nosleep.txt");
+	std::ofstream string_file4("strings_result_2000strX10000ch_nosleep.txt");
+	string(sectionsLibraries, globalNumRepeatitions, true, 10000, 2000, string_file1);
+	string(sectionsLibraries, globalNumRepeatitions, true, 2000, 10000, string_file2);
+	string(sectionsLibraries, globalNumRepeatitions, false, 2000, 10000, string_file3);
+	string(sectionsLibraries, globalNumRepeatitions, false, 2000, 10000, string_file4);
+
+	TimeStamp app_finished = TimeNow();
+	TimeSpan total = std::chrono::duration_cast<std::chrono::seconds>(app_finished - app_launched).count();
+	std::cout << "\nall tests done in " << total << "s.\n";
+	
 	return 0;
 }
