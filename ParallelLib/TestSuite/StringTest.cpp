@@ -168,11 +168,11 @@ void StringTest::DoSequentially(const TestParams& In, RetryResult& Out)
 	#define ___sleep(ms) { if (testConfig.bUseSleepInBusywait) Sleep(ms); }
 #else
 	#define ___sleep(ms) { if (testConfig.bUseSleepInBusywait) \
-	{                                                   \
-	    struct timespec time, outtime;                  \
-	    time.tv_sec = ms / 1000;                        \
-	    time.tv_nsec = (ms % 1000) * 1000000;           \
-	    nanosleep(&time, &outtime)                      \
+	{                                                          \
+	    struct timespec time, outtime;                         \
+	    time.tv_sec = ms / 1000;                               \
+	    time.tv_nsec = (ms % 1000) * 1000000;                  \
+	    nanosleep(&time, &outtime);                            \
 	} }
 #endif
 
