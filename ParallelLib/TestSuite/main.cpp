@@ -248,31 +248,27 @@ int main()
 
 	TimeStamp app_launched = TimeNow();
 	
-	std::ofstream mandel_file("mandelbrot_result.txt");
+	std::ofstream mandel_file("mandelbrot_result.csv");
 	mandelbrot(forVariants, globalNumRepeatitions, false /* don't export images */, mandel_file);
 	
-	std::ofstream matrix_file1("matrix_result.txt");
-	std::ofstream matrix_file2("matrix_result_transposed.txt");
-	std::ofstream matrix_file3("matrix_result_nested.txt");
-	std::ofstream matrix_file4("matrix_result_nested_transposed.txt");
+	std::ofstream matrix_file1("matrix_result.csv");
+	std::ofstream matrix_file2("matrix_result_transposed.csv");
+	std::ofstream matrix_file3("matrix_result_nested.csv");
+	std::ofstream matrix_file4("matrix_result_nested_transposed.csv");
 	matrix(forVariants, globalNumRepeatitions, false, false, matrix_file1);
 	matrix(forVariants, globalNumRepeatitions, true,  false, matrix_file2);
 	matrix(forVariants, globalNumRepeatitions, false, true,  matrix_file3);
 	matrix(forVariants, globalNumRepeatitions, true,  true,  matrix_file4);
 	
-	std::ofstream primes5000_file("primes_result_1000000.txt");
-	std::ofstream primes50000_file("primes_result_10000000.txt");
-	primes(doLibraries, globalMaxNumThreads, globalMaxNumThreadsTbb, globalNumRepeatitions, 2, 1000000, primes5000_file);
-	primes(doLibraries, globalMaxNumThreads, globalMaxNumThreadsTbb, globalNumRepeatitions, 2, 10000000, primes50000_file);
+	std::ofstream primes1000000_file("primes_result_1000000.csv");
+	std::ofstream primes10000000_file("primes_result_10000000.csv");
+	primes(doLibraries, globalMaxNumThreads, globalMaxNumThreadsTbb, globalNumRepeatitions, 2, 1000000, primes1000000_file);
+	primes(doLibraries, globalMaxNumThreads, globalMaxNumThreadsTbb, globalNumRepeatitions, 2, 10000000, primes10000000_file);
 	
-	std::ofstream string_file1("strings_result_10000strX2000ch_sleep.txt");
-	std::ofstream string_file2("strings_result_2000strX10000ch_sleep.txt");
-	std::ofstream string_file3("strings_result_10000strX2000ch_nosleep.txt");
-	std::ofstream string_file4("strings_result_2000strX10000ch_nosleep.txt");
+	std::ofstream string_file1("strings_result_10000strX2000ch_sleep.csv");
+	std::ofstream string_file2("strings_result_2000strX10000ch_sleep.csv");
 	string(sectionsLibraries, globalNumRepeatitions, true, 10000, 2000, string_file1);
 	string(sectionsLibraries, globalNumRepeatitions, true, 2000, 10000, string_file2);
-	string(sectionsLibraries, globalNumRepeatitions, false, 2000, 10000, string_file3);
-	string(sectionsLibraries, globalNumRepeatitions, false, 2000, 10000, string_file4);
 
 	TimeStamp app_finished = TimeNow();
 	TimeSpan total = std::chrono::duration_cast<std::chrono::seconds>(app_finished - app_launched).count();
