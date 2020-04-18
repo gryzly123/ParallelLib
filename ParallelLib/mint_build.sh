@@ -30,27 +30,14 @@ c++ ParallelLib/*.cpp \
 -lpthread             \
 -fPIC                 \
 -shared               \
--O3                   \
+-O2                   \
 -o bin/libParallelLib.so
 echo -e "${BEGIN_BOLD}Installing ParallelLib to /usr/lib.${END_BOLD}"
 sudo cp bin/libParallelLib.so /usr/lib
 
 #TEST SUITE
 #compile as executable
-echo -e "${BEGIN_BOLD}Building TestSuite as an unoptimized executable.${END_BOLD}"
-c++ TestSuite/*.cpp                                 \
-/usr/lib/libParallelLib.so                          \
-/usr/lib/libtbb.so.2                                \
-/usr/lib/libtbbmalloc.so.2                          \
-/usr/lib/libtbbmalloc_proxy.so.2                    \
--lpthread                                           \
--I ../ParallelLib/                                  \
--I ../ExternalLibraries/dlib/                       \
--I ../ExternalLibraries/tbb-2020.0-lin/tbb/include/ \
--fopenmp                                            \
--o bin/0-TestSuite
-
-echo -e "${BEGIN_BOLD}Building TestSuite as an O3 executable.${END_BOLD}"
+echo -e "${BEGIN_BOLD}Building TestSuite as an O2 executable.${END_BOLD}"
 c++ TestSuite/*.cpp                                 \
 /usr/lib/libParallelLib.so                          \
 /usr/lib/libtbb.so.2                                \
@@ -62,19 +49,13 @@ c++ TestSuite/*.cpp                                 \
 -I ../ExternalLibraries/tbb-2020.0-lin/tbb/include/ \
 -fopenmp                                            \
 -O2                                                 \
--o bin/2-TestSuite
-
-echo -e "${BEGIN_BOLD}Running TestSuite O0.${END_BOLD}"
-mkdir result0
-cd result0
-sudo ./../bin/0-TestSuite
-cd ..
+-o bin/TestSuite
 
 echo -e "${BEGIN_BOLD}Running TestSuite O2.${END_BOLD}"
-mkdir result3
-cd result3
-sudo ./../bin/2-TestSuite
+mkdir result2
+cd result2
+sudo ./../bin/TestSuite
 cd ..
 
-echo -e "${BEGIN_BOLD}Script completed. Check results in directories 'result0' and 'result3'.${END_BOLD}"
+echo -e "${BEGIN_BOLD}Script completed. Check results in the 'result2' directory.${END_BOLD}"
 

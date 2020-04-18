@@ -9,11 +9,11 @@ std::string LibraryToString(TargetLibrary Library)
 {
 	switch (Library)
 	{
-	case TargetLibrary::NoLibrary:   return "Sequential ";
-	case TargetLibrary::OpenMP:      return "OpenMP     ";
+	case TargetLibrary::NoLibrary:   return "Sequential";
+	case TargetLibrary::OpenMP:      return "OpenMP";
 	case TargetLibrary::ParallelLib: return "ParallelLib";
-	case TargetLibrary::IntelTBB:    return "IntelTBB   ";
-	case TargetLibrary::dlib:        return "dlib       ";
+	case TargetLibrary::IntelTBB:    return "IntelTBB";
+	case TargetLibrary::dlib:        return "dlib";
 	}
 	throw; //unsupported library
 	return "";
@@ -28,7 +28,7 @@ std::string ForScheduleToString(ForSchedule Schedule)
 	case ForSchedule::Guided:  return "guided";
 	case ForSchedule::None:    return "none";
 	}
-	throw; //unsupported library
+	throw; //unsupported schedule
 	return "";
 }
 

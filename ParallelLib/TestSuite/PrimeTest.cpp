@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "PrimeTest.h"
 
+#define NUM 500
+
 PrimeTestConfig::PrimeTestConfig() { }
 
 PrimeTestConfig::PrimeTestConfig(int searchRangeMin, int searchRangeMax)
@@ -31,7 +33,7 @@ void PrimeTest::DoSequentially(const TestParams& In, RetryResult& Out)
 	
 	Out.BeginParallelWorkload();
 	
-	while(true)
+	while (true)
 	{
 		int localSearchedIndex;
 		localSearchedIndex = currentSearchedIndex++;
@@ -40,7 +42,6 @@ void PrimeTest::DoSequentially(const TestParams& In, RetryResult& Out)
 	}
 	
 	Out.BeginResourceCleanup();
-	//printf("seq--Result: %d primes. Last prime %d\n", primes.size(), primes.back());
 	Out.EndTask(true);
 }
 
@@ -55,29 +56,42 @@ void PrimeTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 	
 	#pragma omp parallel num_threads(In.numThreadsToUse)
 	{
-		while (true)
+		int checkIndexesMin = 0, checkIndexesMax = 0, foundIndexesNum = 0;
+		int foundIndexes[NUM];
+		bool endWork = false;
+		while (!endWork)
 		{
-			int localSearchedIndex;
-			#pragma omp critical
+			#pragma omp critical(primesLock)
 			{
-				currentSearchedIndex++;
-				localSearchedIndex = currentSearchedIndex;
-			}
-	
-			if (localSearchedIndex > testConfig.searchRangeMax) break;
-	
-			if (IsPrime(localSearchedIndex))
-			{
-				#pragma omp critical
+				if (currentSearchedIndex >= testConfig.searchRangeMax)
 				{
-					primes.push_back(localSearchedIndex);
+					endWork = true;
+				}
+				else
+				{
+					checkIndexesMin = ++currentSearchedIndex;
+					checkIndexesMax = std::min<int>(checkIndexesMin + NUM, testConfig.searchRangeMax);
+					currentSearchedIndex = checkIndexesMax + 1;
+				}
+			}
+			
+			if (!endWork)
+			{
+				foundIndexesNum = 0;
+				for (int i = checkIndexesMin; i <= checkIndexesMax; ++i)
+					if (IsPrime(i))
+						foundIndexes[foundIndexesNum++] = i;
+	
+				#pragma omp critical(searchedIndexLock)
+				{
+					for (int i = 0; i < foundIndexesNum; ++i)
+						primes.push_back(i);
 				}
 			}
 		}
 	}
 	
 	Out.BeginResourceCleanup();
-	//printf("omp--Result: %d primes. Last prime %d\n", primes.size(), primes.back());
 	Out.EndTask(true);
 }
 
@@ -102,28 +116,33 @@ void PrimeTest::DoTBB(const TestParams& In, RetryResult& Out)
 		tbb::counting_iterator<int>(In.numThreadsToUse),
 		[&](int thread_id, tbb::parallel_do_feeder<int>& feeder)
 		{
+			int checkIndexesMin = 0, checkIndexesMax = 0, foundIndexesNum = 0;
+			int foundIndexes[NUM];
 			while (true)
 			{
-				int localSearchedIndex;
 				{
 					tbb::mutex::scoped_lock lock(searchedIndexLock);
-					currentSearchedIndex++;
-					localSearchedIndex = currentSearchedIndex;
+					if (currentSearchedIndex >= testConfig.searchRangeMax) break;
+					checkIndexesMin = ++currentSearchedIndex;
+					checkIndexesMax = std::min<int>(checkIndexesMin + NUM, testConfig.searchRangeMax);
+					currentSearchedIndex = checkIndexesMax + 1;
 				}
 
-				if (localSearchedIndex > testConfig.searchRangeMax) break;
+				foundIndexesNum = 0;
+				for (int i = checkIndexesMin; i <= checkIndexesMax; ++i)
+					if (IsPrime(i))
+						foundIndexes[foundIndexesNum++] = i;
 
-				if (PrimeTest::IsPrime(localSearchedIndex))
 				{
 					tbb::mutex::scoped_lock lock(primesLock);
-					primes.push_back(localSearchedIndex);
+					for (int i = 0; i < foundIndexesNum; ++i)
+						primes.push_back(i);
 				}
 			}
 		}
 	);
 
 	Out.BeginResourceCleanup();
-	//printf("pll-Result: %d primes. Last prime %d\n", primes.size(), primes.back());
 	Out.EndTask(true);
 }
 
@@ -163,28 +182,32 @@ struct data
 void dlibPrime(void* something)
 {
 	data* dlib_data = (data*)something;
+	int checkIndexesMin = 0, checkIndexesMax = 0, foundIndexesNum = 0;
+	int foundIndexes[NUM];
 	while (true)
 	{
-		int localSearchedIndex;
 		{
 			dlib_data->searchedIndexLock.lock();
-			dlib_data->currentSearchedIndex++;
-			localSearchedIndex = dlib_data->currentSearchedIndex;
+			if (dlib_data->currentSearchedIndex >= dlib_data->maxR)
+			{
+				dlib_data->searchedIndexLock.unlock();
+				dlib_data->pop_thread();
+				break;
+			}
+			checkIndexesMin = ++(dlib_data->currentSearchedIndex);
+			checkIndexesMax = std::min<int>(checkIndexesMin + NUM, dlib_data->maxR);
+			dlib_data->currentSearchedIndex = checkIndexesMax + 1;
 			dlib_data->searchedIndexLock.unlock();
 		}
 
-		if (localSearchedIndex > dlib_data->maxR)
-		{
-			dlib_data->pop_thread();
-			break;
-		}
+		foundIndexesNum = 0;
+		for (int i = checkIndexesMin; i <= checkIndexesMax; ++i)
+			if (PrimeTest::IsPrime(i))
+				foundIndexes[foundIndexesNum++] = i;
 
-		if (PrimeTest::IsPrime(localSearchedIndex))
-		{
-			dlib_data->primesLock.lock();
-			dlib_data->primes.push_back(localSearchedIndex);
-			dlib_data->primesLock.unlock();
-		}
+		dlib_data->primesLock.lock();
+		for (int i = 0; i < foundIndexesNum; ++i) dlib_data->primes.push_back(i);
+		dlib_data->primesLock.unlock();
 	}
 }
 void PrimeTest::DoDlib(const TestParams& In, RetryResult& Out)
@@ -202,7 +225,6 @@ void PrimeTest::DoDlib(const TestParams& In, RetryResult& Out)
 	while (!dlib_data.is_done()) dlib::sleep(1);
 
 	Out.BeginResourceCleanup();
-	//printf("pll-Result: %d primes. Last prime %d\n", primes.size(), primes.back());
 	Out.EndTask(true);
 }
 
@@ -219,29 +241,34 @@ void PrimeTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 
 	Out.BeginParallelWorkload();
 
-	parallel_do(doPrimes, num_threads(In.numThreadsToUse),
+	pDo tag; tag.NumThreads(In.numThreadsToUse).Do([&](pExecParams ___pExecParams) 
+	{
+		int checkIndexesMin = 0, checkIndexesMax = 0, foundIndexesNum = 0;
+		int foundIndexes[NUM];
+		while (true)
 		{
-			while (true)
 			{
-				int localSearchedIndex;
-				{
-					const std::lock_guard<std::mutex> lock_index(searchedIndexLock);
-					currentSearchedIndex++;
-					localSearchedIndex = currentSearchedIndex;
-				}
-
-				if (localSearchedIndex > testConfig.searchRangeMax) break;
-
-				if (IsPrime(localSearchedIndex))
-				{
-					const std::lock_guard<std::mutex> lock_primes(primesLock);
-					primes.push_back(localSearchedIndex);
-				}
+				const std::lock_guard<std::mutex> lock_index(searchedIndexLock);
+				if (currentSearchedIndex >= testConfig.searchRangeMax) break;
+				checkIndexesMin = ++currentSearchedIndex;
+				checkIndexesMax = std::min<int>(checkIndexesMin + NUM, testConfig.searchRangeMax);
+				currentSearchedIndex = checkIndexesMax + 1;
 			}
-		});
+
+			foundIndexesNum = 0;
+			for (int i = checkIndexesMin; i <= checkIndexesMax; ++i)
+				if (IsPrime(i))
+					foundIndexes[foundIndexesNum++] = i;
+
+			{
+				const std::lock_guard<std::mutex> lock_primes(primesLock);
+				for (int i = 0; i < foundIndexesNum; ++i)
+					primes.push_back(i);
+			}
+		}
+	});
 
 	Out.BeginResourceCleanup();
-	//printf("pll-Result: %d primes. Last prime %d\n", primes.size(), primes.back());
 	Out.EndTask(true);
 }
 #undef parallel_do

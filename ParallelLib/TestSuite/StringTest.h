@@ -27,10 +27,12 @@ struct StringTestConfig
 {
 	const int numStringsToGenerate = 100;
 	const int stringLen = 1024;
+	const bool bUseSleepInBusywait = true;
 	StringTestConfig() { }
-	StringTestConfig(int numStringsToGenerate, int stringLen)
+	StringTestConfig(int numStringsToGenerate, int stringLen, bool bUseSleepInBusywait)
 		: numStringsToGenerate(numStringsToGenerate)
 		, stringLen(stringLen)
+		, bUseSleepInBusywait(bUseSleepInBusywait)
 	{ }
 };
 
