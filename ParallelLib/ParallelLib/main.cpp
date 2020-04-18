@@ -1,299 +1,199 @@
 #include <iostream>
-#include <mutex>
-#include <queue>
+#include <sstream>
 
-class pSingleton
-{
-private:
+#include "ParallelLib.h"
 
-	static pSingleton* ptr;
+#ifndef PARALLELLIB_VALIDITY_TESTS //enable this when building an executable rather than library
 
-	pSingleton()
-		: NumThreads(std::thread::hardware_concurrency())
-	{ }
+#if __GNUC__
+#define INT_MAX INT32_MAX
 
-public:
-	const unsigned int NumThreads;
+void __attribute__ ((constructor)) initLibrary(void) { }
+void __attribute__ ((destructor)) cleanUpLibrary(void) { }
 
-	static const pSingleton& Get()
-	{
-		if (ptr == nullptr) ptr = new pSingleton;
-		return *ptr;
-	}
-};
-pSingleton* pSingleton::ptr;
+#endif
 
-template<class T>
-class pVariable
-{
-private:
-	std::mutex lock;
-
-public:
-	//operator=(T Object2) override
-	//{
-	//	Lock.lock();
-	//	Object = Object2;
-	//	Lock.unlock();
-	//}
-};
-
-template<class T>
-class pVariableShared : pVariable<T>
-{
-private:
-	T& object;
-
-public:
-	pVariableShared(T& Object) : object(Object) { }
-	//operator=(T Object2) override
-	//{
-	//	Lock.lock();
-	//	Object = Object2;
-	//	Lock.unlock();
-	//}
-};
+int main() { return 0; }
 
 
-template<class T>
-class pSetOnce
-{
-private:
-	T Object;
-	bool bWasSet = false;
 
-public:
-	void Set(const T& Data)
-	{
-		if (bWasSet) throw;
-		Object = Data;
-		bWasSet = true;
-	}
-
-	bool OptionalSet(const T& Data)
-	{
-		if (bWasSet) return false;
-		Object = Data;
-		bWasSet = true;
-		return true;
-	}
-
-	const T& Get() { return Object; }
-	bool WasSet() { return bWasSet; }
-};
-
-class pDo
-{
-private:
-	pSetOnce<int> numThreads;
-	pSetOnce<bool> bNoWait;
-	pSetOnce<bool> bExecuteOnMaster;
-	std::thread** threads;
-	int actualNumThreads;
-
-public:
-
-	pDo() { }
-	~pDo() { if (bNoWait.Get()) CleanupThreads(); }
-
-	pDo& NumThreads(int _NumThreads)
-	{
-		numThreads.Set(_NumThreads);
-		return *this;
-	}
-
-	pDo& NoWait(bool _NoWait)
-	{
-		bNoWait.Set(_NoWait);
-		return *this;
-	}
-
-	pDo& ExecuteOnMaster(bool _ExecuteOnMaster)
-	{
-		bExecuteOnMaster.Set(_ExecuteOnMaster);
-		return *this;
-	}
-
-	void Do(std::function<void()> Func)
-	{
-		//class defaults
-		numThreads.OptionalSet(pSingleton::Get().NumThreads);
-		bNoWait.OptionalSet(false);
-		bExecuteOnMaster.OptionalSet(true);
-
-		//dynamic params
-		actualNumThreads = numThreads.Get() - (bExecuteOnMaster.Get() ? 1 : 0);
-		threads = new std::thread*[actualNumThreads];
-		
-		//execution
-		for (int i = 0; i < actualNumThreads; ++i)
-			threads[i] = new std::thread(Func);
-		if(bExecuteOnMaster.Get()) Func();
-
-		//join
-		if (!bNoWait.Get())
-		{
-			CleanupThreads();
-		}
-	}
-
-	void CleanupThreads()
-	{
-		for (int i = 0; i < actualNumThreads; ++i)
-		{
-			threads[i]->join();
-			delete threads[i];
-		}
-		delete[] threads;
-	}
-};
-
-struct pForChunkData
-{
-	const int init;
-	const int target;
-	const int increment;
-	const int chunkSize;
-	std::function<void(int)> func;
-
-	pForChunkData(const int& Init, const int& Target, const int& Increment, const int& ChunkSize)
-		: init(Init)
-		, target(Target)
-		, increment(Increment)
-		, chunkSize(ChunkSize)
-	{
-		//loop packets need to have a proper size
-		if (chunkSize < 1) throw;
-
-		//increment can't be zero, because then the loop would be infinite
-		if (increment == 0) throw;
-
-		//increment MUST be positive if the loop goes from Init to Target
-		//              and negative if the loop goes from Target to Init
-		if ((target < init) ^ (increment > 0)) throw;
-	}
-};
-
-class pForChunk
-{
-protected:
-	const pForChunkData& data;
-	pForChunk(const pForChunkData& Data) : data(Data) { }
-
-public:
-	virtual void Do() = 0;
-};
-
-class pForChunkStaticSize : public pForChunk
-{
-	const int chunkBegin;
-	const int chunkEnd;
-
-public:
-	pForChunkStaticSize(const pForChunkData& Data, const int ChunkBegin, const int ChunkEnd)
-		: pForChunk(Data)
-		, chunkBegin(ChunkBegin)
-		, chunkEnd(ChunkEnd)
-	{ }
-
-	void Do() override
-	{
-		for (int i = chunkBegin; i < chunkEnd; i += data.increment) data.func(i);
-	}
-};
-
-enum pSchedule
-{
-	Static = 0,
-	Dynamic = 1,
-	Guided = 2
-};
-
-class pFor
-{
-private:
-	pSetOnce<int> numThreads;
-	pSetOnce<int> chunkSize;
-	pSetOnce<bool> bNoWait;
-	pSetOnce<bool> bExecuteOnMaster;
-	pSetOnce<pSchedule> schedule;
-	pForChunkData* Data;
-	std::thread** threads;
-	int actualNumThreads;
-
-public:
-
-	pFor() { }
-	~pFor() { if (bNoWait.Get()) CleanupThreads(); }
-
-	pFor& NumThreads(int _NumThreads)
-	{
-		numThreads.Set(_NumThreads);
-		return *this;
-	}
-
-	pFor& NoWait(bool _NoWait)
-	{
-		bNoWait.Set(_NoWait);
-		return *this;
-	}
-
-	pFor& ExecuteOnMaster(bool _ExecuteOnMaster)
-	{
-		bExecuteOnMaster.Set(_ExecuteOnMaster);
-		return *this;
-	}
-
-	pFor& ChunkSize(bool _ChunkSize)
-	{
-		chunkSize.Set(_ChunkSize);
-		return *this;
-	}
-
-	void Do(const int Init, const int Target, const int Increment, const std::function<void(int)>& Function)
-	{
-		//class defaults
-		numThreads.OptionalSet(pSingleton::Get().NumThreads);
-		bNoWait.OptionalSet(false);
-		bExecuteOnMaster.OptionalSet(true);
-		chunkSize.OptionalSet(1);
-		schedule.OptionalSet(pSchedule::Static);
-
-		//dynamic params
-		Data = new pForChunkData(Init, Target, Increment, chunkSize.Get());
-		if (schedule.Get() != pSchedule::Guided);
-
-		//todo: split task into chunks
-	}
-
-	void CleanupThreads()
-	{
-		for (int i = 0; i < actualNumThreads; ++i)
-		{
-			threads[i]->join();
-			delete threads[i];
-		}
-		delete[] threads;
-	}
-};
-
-#define yes true
-#define no false
-#define parallel_do(tag, params, method) pDo tag; tag params .Do([] method);
-#define parallel_for(tag, iterator, init_val, max_val, increment, params, method) pFor tag; tag params .Do(init_val, max_val, increment, [](int iterator) method);
-#define num_threads(n)                    .NumThreads(n)
-#define exec_master(c)                  .ExecuteOnMaster(c)
-#define nowait(c)                       .NoWait(c)
-
-#define as ,
-#define create_public(type, variable)  pVariableShared<type> variable();
-#define make_public(variable, type, asvariable)  pVariableShared<types> asvariable(variable);
-
-#define create_private(type, var) pVariablePrivate<type> var
-#define make_private(variable, type, asvariable) pVariablePrivate<type> var
-#define last_private(variable, type, asvariable) pVariablePrivate<type> var
-
+#else
 int main()
 {
+	std::cout << "parallel test 1: four threads, join\n";
 
+	create_public(int, s, 10);
+	create_private(int, p);
+
+pDo parTest1; parTest1
+	.NoWait(true)
+	.NumThreads(4)
+	.ExecuteOnMaster(true)
+	.NumThreads(6)
+	.Do([&](pExecParams params)
+{
+	//parallel code
+});
+
+parallel_do(parTest2, nowait(yes) num_threads(4) exec_master(yes) num_threads(6),
+{
+	//parallel code
+});
+
+	parallel_do(parTest3, num_threads(4) nowait(no) exec_master(yes),
+		{
+			for (int i = 0; i < INT_MAX; ++i);
+			p = THREAD_ID;
+			++s;
+			std::cout << p << " " << s << "\n";
+		});
+
+	std::cout << "parallel test 2: four threads, nojoin\n";
+
+	{
+		parallel_do(parTest2a, num_threads(2) nowait(yes) exec_master(no),
+			{
+				for (int i = 0; i < INT_MAX; ++i);
+				p = THREAD_ID;
+				++s;
+				std::stringstream out;
+				out << "A: (" << p << ") " << s << "\n";
+				printf("%s", out.str().c_str());
+			});
+
+		parallel_do(parTest2b, num_threads(2) nowait(yes) exec_master(no),
+			{
+				for (int i = 0; i < INT_MAX; ++i);
+				p = THREAD_ID;
+				++s;
+				std::stringstream out;
+				out << "B: (" << p << ") " << s << "\n";
+				printf("%s", out.str().c_str());
+			});
+	}
+
+	std::cout << "end of nojoin scope - joined\n";
+
+	std::cout << "\n\nparallelFor test 1:\n  for(i = 0; i < 40; i += 4) in six threads (static; chunk:1)\n";
+
+	pFor forTest;
+
+	forTest.NoWait(false)
+		.ExecuteOnMaster(false)
+		.Schedule(pSchedule::Static)
+		.ChunkSize(1)
+		.NumThreads(8)
+		.Do(0, 40, 4, [&](pExecParams ___pExecParams, int iterator)
+	{
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
+
+	std::cout << "\n\nparallelFor test 2:\n  for(i = 0; i < 44; i += 4) in five threads (dynamic; chunk:2)\n";
+
+	pFor forTest2;
+
+	forTest2.NoWait(false)
+		.ExecuteOnMaster(false)
+		.Schedule(pSchedule::Dynamic)
+		.ChunkSize(1)
+		.NumThreads(7)
+		.Do(0, 44, 4, [&](pExecParams ___pExecParams, int iterator)
+	{
+		___pExecParams.SleepMili((THREAD_ID - 8) * 200.0f);
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
+
+	std::cout << "\n\nparallelFor test 3:\n  for(i = 87; i > 3; i -= 7) in three threads (static; chunk:3)\n";
+
+	pFor forTest3;
+
+	forTest3.NoWait(false)
+		.ExecuteOnMaster(false)
+		.Schedule(pSchedule::Static)
+		.NumThreads(3)
+		.Do(87, 3, -7, [&](pExecParams ___pExecParams, int iterator)
+	{
+		___pExecParams.SleepMili((THREAD_ID - 8) * 200.0f);
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
+
+	std::cout << "\n\nparallelFor test 4:\n  for(i = 87; i > 3; i -= 7) in three threads (dynamic; chunk:3)\n";
+
+	pFor forTest4;
+
+	forTest4.NoWait(false)
+		.ExecuteOnMaster(false)
+		.Schedule(pSchedule::Dynamic)
+		.ChunkSize(3)
+		.NumThreads(3)
+		.Do(87, 3, -7, [&](pExecParams ___pExecParams, int iterator)
+	{
+		___pExecParams.SleepMili((THREAD_ID - 8) * 200.0f);
+		std::stringstream result;
+		result << iterator << "\t@ " << THREAD_ID << "\n";
+		printf("%s", result.str().c_str());
+	});
+
+	std::cout << "\n\nparallelSecetions test 1:\n  five sections C++ style (-nowait, +exec_master)\n";
+	pSections sections; sections
+		.NoWait(false)
+		.ExecuteOnMaster(true)
+		.Do({
+				[&](pExecParams ___pExecParams)
+				{
+					PARALLEL_SLEEP_MILISECONDS(THREAD_ID);
+					printf("section A (thread %d)\n", THREAD_ID);
+				},
+				[&](pExecParams ___pExecParams)
+				{
+					PARALLEL_SLEEP_MILISECONDS(THREAD_ID);
+					printf("section B (thread %d)\n", THREAD_ID);
+				},
+				[&](pExecParams ___pExecParams)
+				{
+					PARALLEL_SLEEP_MILISECONDS(THREAD_ID);
+					printf("section C (thread %d)\n", THREAD_ID);
+				},
+				[&](pExecParams ___pExecParams)
+				{
+					PARALLEL_SLEEP_MILISECONDS(THREAD_ID);
+					printf("section D (thread %d)\n", THREAD_ID);
+				},
+				[&](pExecParams ___pExecParams)
+				{
+					PARALLEL_SLEEP_MILISECONDS(THREAD_ID);
+					printf("section E (thread %d)\n", THREAD_ID);
+				},
+			});
+
+	std::cout << "\n\nparallelSecetions test 2:\n  three sections OMP style (+nowait, -exec_master)\n";
+	parallel_sections(sections2, nowait(yes) exec_master(no),
+		parallel_section
+		{
+			PARALLEL_SLEEP_MILISECONDS(THREAD_ID);
+			printf("defined section A (thread %d)\n", THREAD_ID);
+		}
+		parallel_section
+		{
+			PARALLEL_SLEEP_MILISECONDS(THREAD_ID);
+			printf("defined section B (thread %d)\n", THREAD_ID);
+		}
+		parallel_section
+		{
+			PARALLEL_SLEEP_MILISECONDS(THREAD_ID);
+			printf("defined section C (thread %d)\n", THREAD_ID);
+		}
+		)
+
+	std::cout << "--done--";
+
+	std::getchar();
+	return 0;
 }
+#endif
