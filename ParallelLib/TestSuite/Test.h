@@ -111,6 +111,7 @@ struct TestResult
 
 	size_t GetNumTestRepeatitions() const;
 	TimeSpan GetAverageResultTime() const; //returns mean average of all test times
+	TimeSpan GetStandardDeviation() const; //returns standard deviation of all test times
 	bool DidTestSucceed() const; //test is considered failed if the last testPhase is not a successful task end
 
 	TestResult(const TargetLibrary _testedLibrary);

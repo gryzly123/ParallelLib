@@ -9,11 +9,11 @@ std::string LibraryToString(TargetLibrary Library)
 {
 	switch (Library)
 	{
-	case TargetLibrary::NoLibrary:   return "Sequential ";
-	case TargetLibrary::OpenMP:      return "OpenMP     ";
+	case TargetLibrary::NoLibrary:   return "Sequential";
+	case TargetLibrary::OpenMP:      return "OpenMP";
 	case TargetLibrary::ParallelLib: return "ParallelLib";
-	case TargetLibrary::IntelTBB:    return "IntelTBB   ";
-	case TargetLibrary::dlib:        return "dlib       ";
+	case TargetLibrary::IntelTBB:    return "IntelTBB";
+	case TargetLibrary::dlib:        return "dlib";
 	}
 	throw; //unsupported library
 	return "";
@@ -28,7 +28,7 @@ std::string ForScheduleToString(ForSchedule Schedule)
 	case ForSchedule::Guided:  return "guided";
 	case ForSchedule::None:    return "none";
 	}
-	throw; //unsupported library
+	throw; //unsupported schedule
 	return "";
 }
 
@@ -67,7 +67,7 @@ void RetryResult::BeginParallelWorkload()
 	if (testState != TestPhase::BegunResourceInitialization) throw;
 
 	TimeStamp end = std::chrono::steady_clock::now();
-	phaseTime[0] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+	phaseTime[0] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 	start = std::chrono::steady_clock::now();
 	testState = TestPhase::BegunParallelWorkload;
 }
@@ -77,7 +77,7 @@ void RetryResult::BeginResourceCleanup()
 	if (testState != TestPhase::BegunParallelWorkload) throw;
 
 	TimeStamp end = std::chrono::steady_clock::now();
-	phaseTime[1] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+	phaseTime[1] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 	start = std::chrono::steady_clock::now();
 	testState = TestPhase::BegunResourceCleanup;
 }
@@ -88,7 +88,7 @@ void RetryResult::EndTask(bool bSucceeded)
 	{
 		if (testState != TestPhase::BegunResourceCleanup) throw;
 		TimeStamp end = std::chrono::steady_clock::now();
-		phaseTime[2] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+		phaseTime[2] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 	}
 	testState = bSucceeded ? TestPhase::TaskEndedSuccessfully : TestPhase::TaskFailed;
 }
@@ -119,6 +119,27 @@ TimeSpan TestResult::GetAverageResultTime() const
 	return totalTime;
 }
 
+TimeSpan TestResult::GetStandardDeviation() const
+{
+	TimeSpan average = GetAverageResultTime();
+
+	TimeSpan totalSquaredDiffs = 0;
+	int numSucceededRetries = 0;
+
+	for (const RetryResult& result : perTryResults)
+	{
+		if (!result.GetTaskSucceeded()) continue;
+		++numSucceededRetries;
+
+		TimeSpan duration = result.GetParallelWorkloadDuration();
+		TimeSpan diff = (duration < average) ? (average - duration) : (duration - average);
+		totalSquaredDiffs += diff * diff;
+	}
+
+	totalSquaredDiffs /= numSucceededRetries;
+	return (TimeSpan)std::sqrt(totalSquaredDiffs);
+}
+
 bool TestResult::DidTestSucceed() const
 {
 	for (const RetryResult& result : perTryResults)
@@ -144,7 +165,7 @@ void Test::PerformTests(std::vector<TargetLibrary> targetLibs, const TestParams&
 
 		if (inParams.bVerboseStats)
 		{
-			printf("Testing library %s:\n", LibraryToString(lib));
+			std::cout << "Testing library: " << LibraryToString(lib) << "\n";
 		}
 
 		//Create the TestResult object for the current library.

@@ -145,6 +145,7 @@
       <ConformanceMode>false</ConformanceMode>
       <OpenMPSupport>true</OpenMPSupport>
       <AdditionalIncludeDirectories>$(SolutionDir)\;$(SolutionDir)..\ExternalLibraries\tbb-2020.0-win\tbb\include\;$(SolutionDir)..\ExternalLibraries\dlib\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

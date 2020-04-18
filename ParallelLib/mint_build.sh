@@ -1,48 +1,61 @@
-##install required packages - you only need to do this once
+#MINT INSTALL - only executed once
 
-sudo add-apt-repository ppa:jonathonf/gcc
-sudo apt-get update
-sudo apt install g++
+BEGIN_BOLD='\e[1;93m'
+END_BOLD='\e[0m'
 
-##if windows chooses wrong file encoding, you can revert to ASCII by using
-#sudo apt install enca
-#enconv stdafx.h -L polish -x ASCII
+if [ -e bin/ ]
+then
+    echo -e "${BEGIN_BOLD}ParallelLib prerequisites already installed. Building.${END_BOLD}"
+else
+    echo -e "${BEGIN_BOLD}ParallelLib prerequisites not found. Installing GCC and TBB SOs.${END_BOLD}"
+    #install required packages (GCC, C++)
+    sudo add-apt-repository ppa:jonathonf/gcc
+    sudo apt-get update
+    sudo apt install g++
 
-#setup tbb dynamic libraries
-sudo mkdir /usr/local/lib/tbb
-sudo cp ../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/* /usr/local/lib/tbb/
+    #setup tbb dynamic libraries
+    sudo cp ../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbb.so.2 /usr/lib/
+    sudo cp ../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc.so.2 /usr/lib/
+    sudo cp ../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc_proxy.so.2 /usr/lib/
 
+    #create buildfolder that also marks prerequisites as installed
+    mkdir bin
+    echo -e "${BEGIN_BOLD}ParallelLib prerequisites have been installed. Starting build.${END_BOLD}"
+fi
 
-#compile parallel lib
-mkdir bin
-mkdir bin/static
-mkdir bin/final
-c++ ParallelLib/*.cpp -lpthread -o bin/static/parallellib.o
-ar rcs bin/final/libParallelLib.a bin/static/parallellib.o
-ranlib bin/final/libParallelLib.a 
+#PARALLEL LIB
+#compile as static library
+echo -e "${BEGIN_BOLD}Building ParallelLib as a shared library (.so).${END_BOLD}"
+c++ ParallelLib/*.cpp \
+-lpthread             \
+-fPIC                 \
+-shared               \
+-O2                   \
+-o bin/libParallelLib.so
+echo -e "${BEGIN_BOLD}Installing ParallelLib to /usr/lib.${END_BOLD}"
+sudo cp bin/libParallelLib.so /usr/lib
 
-
-#compile test suite
-mkdir testbin
+#TEST SUITE
+#compile as executable
+echo -e "${BEGIN_BOLD}Building TestSuite as an O2 executable.${END_BOLD}"
 c++ TestSuite/*.cpp                                 \
+/usr/lib/libParallelLib.so                          \
+/usr/lib/libtbb.so.2                                \
+/usr/lib/libtbbmalloc.so.2                          \
+/usr/lib/libtbbmalloc_proxy.so.2                    \
 -lpthread                                           \
--fopenmp                                            \
-ParallelLib/*.cpp                                   \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbb.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbb_debug.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbb_preview.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbb_preview_debug.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbbind.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbbind_debug.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc_debug.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc_proxy.so.2 \
-../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/libtbbmalloc_proxy_debug.so.2 \
 -I ../ParallelLib/                                  \
 -I ../ExternalLibraries/dlib/                       \
 -I ../ExternalLibraries/tbb-2020.0-lin/tbb/include/ \
--o testbin/test.lexe
-#bin/final/libParallelLib.a                         \
-#../ExternalLibraries/tbb-2020.0-lin/tbb/lib/intel64/gcc4.8/* \
+-fopenmp                                            \
+-O2                                                 \
+-o bin/TestSuite
 
+echo -e "${BEGIN_BOLD}Running TestSuite O2.${END_BOLD}"
+mkdir result2
+cd result2
+sudo ./../bin/TestSuite
+cd ..
+
+echo -e "${BEGIN_BOLD}Script completed. Check results in the 'result2' directory.${END_BOLD}"
 

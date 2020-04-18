@@ -158,27 +158,23 @@ void StringTest::DoSequentially(const TestParams& In, RetryResult& Out)
 		while ((LastProcessedProduced = LastProcessedProduced->next) != nullptr);
 
 		Out.BeginResourceCleanup();
-		//printf("\n\n%s\n%s\n%s\n%s\n\n", ProducedStrings.string, UpperStrings.string, LowerStrings.string, AlternatedStrings.string);
-
 		//note: data will be removed at the end of scope thanks to StringList's destructor
 	}
 	Out.EndTask(true);
 }
 
 #ifndef __GNUC__
-#include <Windows.h>
-#define ___sleep(ms) Sleep(ms)
+	#include <Windows.h>
+	#define ___sleep(ms) { if (testConfig.bUseSleepInBusywait) Sleep(ms); }
 #else
-void ___sleep(int ms)
-{
-    struct timespec time, outtime;
-    time.tv_sec = ms / 1000;
-    time.tv_nsec = (ms % 1000) * 1000000;
-    nanosleep(&time, &outtime);
-}
+	#define ___sleep(ms) { if (testConfig.bUseSleepInBusywait) \
+	{                                                          \
+	    struct timespec time, outtime;                         \
+	    time.tv_sec = ms / 1000;                               \
+	    time.tv_nsec = (ms % 1000) * 1000000;                  \
+	    nanosleep(&time, &outtime);                            \
+	} }
 #endif
-
-//void ConsumerThread(StringList*& targetArray, bool& bProductionCompleted,)
 
 void StringTest::DoOpenMP(const TestParams& In, RetryResult& Out)
 {
@@ -600,6 +596,7 @@ void StringTest::DoTBB(const TestParams& In, RetryResult& Out)
 }
 
 #include "ParallelLib/ParallelLib.h"
+#include <condition_variable>
 void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 {
 	Out.BeginResourceInit();
@@ -670,7 +667,10 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 							bNothingToProcess = false;
 						}
 					}
-					if (bNothingToProcess) PARALLEL_SLEEP_MILISECONDS(1);
+					if (bNothingToProcess)
+					{
+						___sleep(1);
+					}
 				}
 				if (!bStringsLeft) break;
 
@@ -722,7 +722,11 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 							bNothingToProcess = false;
 						}
 					}
-					if (bNothingToProcess) PARALLEL_SLEEP_MILISECONDS(1);
+					if (bNothingToProcess)
+					{
+						___sleep(1);
+
+					}
 				}
 				if (!bStringsLeft) break;
 
@@ -775,7 +779,11 @@ void StringTest::DoParallelLib(const TestParams& In, RetryResult& Out)
 							bNothingToProcess = false;
 						}
 					}
-					if (bNothingToProcess) PARALLEL_SLEEP_MILISECONDS(1);
+					if (bNothingToProcess)
+					{
+						___sleep(1);
+
+					}
 				}
 				if (!bStringsLeft) break;
 

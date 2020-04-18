@@ -3,13 +3,23 @@
 
 #include "ParallelLib.h"
 
+#ifndef PARALLELLIB_VALIDITY_TESTS //enable this when building an executable rather than library
+
 #if __GNUC__
 #define INT_MAX INT32_MAX
-#endif 
 
+void __attribute__ ((constructor)) initLibrary(void) { }
+void __attribute__ ((destructor)) cleanUpLibrary(void) { }
+
+#endif
+
+int main() { return 0; }
+
+
+
+#else
 int main()
 {
-#if 1
 	std::cout << "parallel test 1: four threads, join\n";
 
 	create_public(int, s, 10);
@@ -129,7 +139,6 @@ parallel_do(parTest2, nowait(yes) num_threads(4) exec_master(yes) num_threads(6)
 		result << iterator << "\t@ " << THREAD_ID << "\n";
 		printf("%s", result.str().c_str());
 	});
-#endif
 
 	std::cout << "\n\nparallelSecetions test 1:\n  five sections C++ style (-nowait, +exec_master)\n";
 	pSections sections; sections
@@ -187,3 +196,4 @@ parallel_do(parTest2, nowait(yes) num_threads(4) exec_master(yes) num_threads(6)
 	std::getchar();
 	return 0;
 }
+#endif

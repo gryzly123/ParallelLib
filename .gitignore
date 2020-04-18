@@ -331,14 +331,18 @@ ASALocalRun/
 
 #------ParallelLib repository-specific ignores begin here------
 
+#output result files
 *.ppm
 *.out
+*.txt
+*.odt
 
-ParallelLib/TestSuite/image_filters.cpp
-ParallelLib/TestSuite/mandelbrot.cpp
-ParallelLib/TestSuite/sierpinski.cpp
+#tbb library in project directory for convenience
 ParallelLib/TestSuite/tbb.dll
 
+#extracted contents of TBB 2020.0 (kept in repo as archives for manual extraction)
 ExternalLibraries/tbb-2020.0-win/
 ExternalLibraries/tbb-2020.0-lin/
-ParallelLib/testbin/
+
+#note: we don't ignore OpenMP as it is a compiler feature
+#note: we don't ignore dlib as it is a repository submodule
